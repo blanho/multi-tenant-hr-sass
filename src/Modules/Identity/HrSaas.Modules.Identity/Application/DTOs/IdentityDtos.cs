@@ -7,7 +7,9 @@ public sealed record UserDto(
     Guid Id,
     Guid TenantId,
     string Email,
-    string Role,
+    Guid RoleId,
+    string RoleName,
+    IReadOnlyList<string> Permissions,
     bool IsActive,
     DateTime CreatedAt);
 

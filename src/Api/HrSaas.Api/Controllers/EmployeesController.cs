@@ -1,6 +1,8 @@
+using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Modules.Employee.Application.Commands;
 using HrSaas.Modules.Employee.Application.DTOs;
 using HrSaas.Modules.Employee.Application.Queries;
+using HrSaas.Modules.Identity.Domain.Entities;
 using HrSaas.TenantSdk;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -38,7 +40,7 @@ public sealed class EmployeesController(
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Manager")]
+    [HasPermission(Permission.Employees.Create)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
@@ -60,7 +62,7 @@ public sealed class EmployeesController(
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Manager")]
+    [HasPermission(Permission.Employees.Update)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
@@ -80,7 +82,7 @@ public sealed class EmployeesController(
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [HasPermission(Permission.Employees.Delete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

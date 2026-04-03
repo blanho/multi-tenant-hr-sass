@@ -1,6 +1,8 @@
 using Asp.Versioning;
+using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Modules.Billing.Application.Commands;
 using HrSaas.Modules.Billing.Application.Queries;
+using HrSaas.Modules.Identity.Domain.Entities;
 using HrSaas.TenantSdk;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -27,7 +29,7 @@ public sealed class BillingController(IMediator mediator, ITenantService tenantS
     }
 
     [HttpPost("subscription/cancel")]
-    [Authorize(Roles = "Admin")]
+    [HasPermission(Permission.Billing.Cancel)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Cancel([FromBody] CancelRequest request, CancellationToken ct)

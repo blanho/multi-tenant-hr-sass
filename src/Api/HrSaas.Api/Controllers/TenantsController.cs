@@ -1,4 +1,6 @@
 using Asp.Versioning;
+using HrSaas.Api.Infrastructure.Authorization;
+using HrSaas.Modules.Identity.Domain.Entities;
 using HrSaas.Modules.Tenant.Application.Commands;
 using HrSaas.Modules.Tenant.Application.Queries;
 using MediatR;
@@ -11,11 +13,12 @@ namespace HrSaas.Api.Controllers;
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 [EnableRateLimiting("api")]
 public sealed class TenantsController(IMediator mediator) : ControllerBase
 {
     [HttpGet("{tenantId:guid}")]
+    [HasPermission(Permission.Tenants.View)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid tenantId, CancellationToken ct)
@@ -25,7 +28,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [HasPermission(Permission.Tenants.View)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var result = await mediator.Send(new GetAllTenantsQuery(), ct);
@@ -33,7 +36,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [HasPermission(Permission.Tenants.Create)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateTenantCommand command, CancellationToken ct)
     {
@@ -47,7 +50,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("{tenantId:guid}/suspend")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [HasPermission(Permission.Tenants.Suspend)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Suspend(Guid tenantId, [FromBody] SuspendRequest request, CancellationToken ct)
     {
@@ -56,7 +59,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("{tenantId:guid}/reinstate")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [HasPermission(Permission.Tenants.Reinstate)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Reinstate(Guid tenantId, CancellationToken ct)
@@ -71,7 +74,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("{tenantId:guid}/upgrade-plan")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [HasPermission(Permission.Tenants.UpgradePlan)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpgradePlan(Guid tenantId, [FromBody] UpgradePlanRequest request, CancellationToken ct)

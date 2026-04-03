@@ -12,7 +12,7 @@ public sealed record RegisterCommand(
     Guid TenantId,
     string Email,
     string Password,
-    string Role = "Employee") : ICommand<AuthTokenDto>;
+    string RoleName = "Employee") : ICommand<AuthTokenDto>;
 
 public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -21,13 +21,13 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(254);
         RuleFor(x => x.Password).NotEmpty().MinimumLength(8).MaximumLength(128);
-        RuleFor(x => x.Role).NotEmpty().Must(r => AppUser.AllowedRoles.Contains(r))
-            .WithMessage("Role must be one of: Admin, Manager, Employee");
+        RuleFor(x => x.RoleName).NotEmpty().MaximumLength(64);
     }
 }
 
 public sealed class RegisterCommandHandler(
     IUserRepository userRepository,
+    IRoleRepository roleRepository,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService) : IRequestHandler<RegisterCommand, Result<AuthTokenDto>>
 {
@@ -35,25 +35,26 @@ public sealed class RegisterCommandHandler(
     {
         var existing = await userRepository.GetByEmailAsync(request.TenantId, request.Email, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
-        {
             return Result<AuthTokenDto>.Failure("A user with this email already exists.", "EMAIL_TAKEN");
-        }
+
+        var role = await roleRepository.GetByNameAsync(request.TenantId, request.RoleName, cancellationToken).ConfigureAwait(false);
+        if (role is null)
+            return Result<AuthTokenDto>.Failure($"Role '{request.RoleName}' does not exist for this tenant.", "ROLE_NOT_FOUND");
 
         var email = Email.Create(request.Email);
         var hash = passwordHasher.Hash(request.Password);
-        var user = AppUser.Create(request.TenantId, email, HashedPassword.FromHash(hash), request.Role);
+        var user = AppUser.Create(request.TenantId, email, HashedPassword.FromHash(hash), role.Id);
 
         await userRepository.AddAsync(user, cancellationToken).ConfigureAwait(false);
         await userRepository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.TenantId, user.Email.Value, user.Role);
+        var accessToken = jwtTokenService.GenerateAccessToken(
+            user.Id, user.TenantId, user.Email.Value, role.Name, role.Permissions);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
 
         return Result<AuthTokenDto>.Success(new AuthTokenDto(
-            accessToken,
-            refreshToken,
-            DateTime.UtcNow.AddHours(1),
-            new UserDto(user.Id, user.TenantId, user.Email.Value, user.Role, user.IsActive, user.CreatedAt)));
+            accessToken, refreshToken, DateTime.UtcNow.AddHours(1),
+            new UserDto(user.Id, user.TenantId, user.Email.Value, role.Id, role.Name, role.Permissions, user.IsActive, user.CreatedAt)));
     }
 }
 
@@ -71,6 +72,7 @@ public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 
 public sealed class LoginCommandHandler(
     IUserRepository userRepository,
+    IRoleRepository roleRepository,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService) : IRequestHandler<LoginCommand, Result<AuthTokenDto>>
 {
@@ -78,22 +80,21 @@ public sealed class LoginCommandHandler(
     {
         var user = await userRepository.GetByEmailAsync(request.TenantId, request.Email, cancellationToken).ConfigureAwait(false);
         if (user is null || !passwordHasher.Verify(request.Password, user.Password.Value))
-        {
             return Result<AuthTokenDto>.Failure("Invalid credentials.", "INVALID_CREDENTIALS");
-        }
 
         if (!user.IsActive)
-        {
             return Result<AuthTokenDto>.Failure("Account is deactivated.", "ACCOUNT_DEACTIVATED");
-        }
 
-        var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.TenantId, user.Email.Value, user.Role);
+        var role = await roleRepository.GetByIdAsync(user.RoleId, cancellationToken).ConfigureAwait(false);
+        if (role is null)
+            return Result<AuthTokenDto>.Failure("User role configuration is invalid.", "ROLE_NOT_FOUND");
+
+        var accessToken = jwtTokenService.GenerateAccessToken(
+            user.Id, user.TenantId, user.Email.Value, role.Name, role.Permissions);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
 
         return Result<AuthTokenDto>.Success(new AuthTokenDto(
-            accessToken,
-            refreshToken,
-            DateTime.UtcNow.AddHours(1),
-            new UserDto(user.Id, user.TenantId, user.Email.Value, user.Role, user.IsActive, user.CreatedAt)));
+            accessToken, refreshToken, DateTime.UtcNow.AddHours(1),
+            new UserDto(user.Id, user.TenantId, user.Email.Value, role.Id, role.Name, role.Permissions, user.IsActive, user.CreatedAt)));
     }
 }

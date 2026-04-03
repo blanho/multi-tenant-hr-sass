@@ -12,7 +12,7 @@ public sealed record UserDeactivatedEvent(Guid TenantId, Guid UserId) : IDomainE
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
-public sealed record UserRoleChangedEvent(Guid TenantId, Guid UserId, string OldRole, string NewRole) : IDomainEvent
+public sealed record UserRoleChangedEvent(Guid TenantId, Guid UserId, Guid OldRoleId, Guid NewRoleId) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }

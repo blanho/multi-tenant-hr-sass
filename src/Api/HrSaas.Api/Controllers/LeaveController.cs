@@ -1,4 +1,6 @@
 using Asp.Versioning;
+using HrSaas.Api.Infrastructure.Authorization;
+using HrSaas.Modules.Identity.Domain.Entities;
 using HrSaas.Modules.Leave.Application.Commands;
 using HrSaas.Modules.Leave.Application.Queries;
 using HrSaas.TenantSdk;
@@ -37,7 +39,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpGet("pending")]
-    [Authorize(Roles = "Admin,Manager")]
+    [HasPermission(Permission.Leaves.Approve)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPending(CancellationToken ct)
     {
@@ -61,7 +63,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpPost("{leaveId:guid}/approve")]
-    [Authorize(Roles = "Admin,Manager")]
+    [HasPermission(Permission.Leaves.Approve)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -79,7 +81,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpPost("{leaveId:guid}/reject")]
-    [Authorize(Roles = "Admin,Manager")]
+    [HasPermission(Permission.Leaves.Reject)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

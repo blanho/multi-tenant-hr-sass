@@ -19,19 +19,24 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
 {
     private readonly JwtOptions _opts = options.Value;
 
-    public string GenerateAccessToken(Guid userId, Guid tenantId, string email, string role)
+    public string GenerateAccessToken(Guid userId, Guid tenantId, string email, string role, IReadOnlyList<string> permissions)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opts.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim("tenant_id", tenantId.ToString()),
-            new Claim(ClaimTypes.Role, role),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Email, email),
+            new("tenant_id", tenantId.ToString()),
+            new(ClaimTypes.Role, role),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+
+        foreach (var permission in permissions)
+        {
+            claims.Add(new Claim("permission", permission));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _opts.Issuer,

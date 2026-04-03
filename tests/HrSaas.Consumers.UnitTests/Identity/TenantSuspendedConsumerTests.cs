@@ -38,8 +38,8 @@ public sealed class TenantSuspendedConsumerTests : IAsyncDisposable
         await _harness.Start();
         var tenantId = Guid.NewGuid();
 
-        var user1 = AppUser.Create(tenantId, Email.Create("a@test.io"), HashedPassword.FromHash("hash"), "Employee");
-        var user2 = AppUser.Create(tenantId, Email.Create("b@test.io"), HashedPassword.FromHash("hash"), "Admin");
+        var user1 = AppUser.Create(tenantId, Email.Create("a@test.io"), HashedPassword.FromHash("hash"), Guid.NewGuid());
+        var user2 = AppUser.Create(tenantId, Email.Create("b@test.io"), HashedPassword.FromHash("hash"), Guid.NewGuid());
 
         _repo.GetAllAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<AppUser> { user1, user2 });
@@ -59,7 +59,7 @@ public sealed class TenantSuspendedConsumerTests : IAsyncDisposable
         await _harness.Start();
         var tenantId = Guid.NewGuid();
 
-        var user = AppUser.Create(tenantId, Email.Create("a@test.io"), HashedPassword.FromHash("hash"), "Employee");
+        var user = AppUser.Create(tenantId, Email.Create("a@test.io"), HashedPassword.FromHash("hash"), Guid.NewGuid());
         user.Deactivate();
 
         _repo.GetAllAsync(tenantId, Arg.Any<CancellationToken>())

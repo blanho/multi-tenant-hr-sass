@@ -7,41 +7,38 @@ namespace HrSaas.Modules.Identity.Domain.Entities;
 
 public sealed class AppUser : BaseEntity
 {
-    public static readonly IReadOnlyList<string> AllowedRoles = ["Admin", "Manager", "Employee"];
-
     public Email Email { get; private set; } = null!;
     public HashedPassword Password { get; private set; } = null!;
-    public string Role { get; private set; } = null!;
+    public Guid RoleId { get; private set; }
     public bool IsActive { get; private set; } = true;
 
     private AppUser() { }
 
-    public static AppUser Create(Guid tenantId, Email email, HashedPassword password, string role)
+    public static AppUser Create(Guid tenantId, Email email, HashedPassword password, Guid roleId)
     {
         Guard.NotEmpty(tenantId, nameof(tenantId));
         Guard.NotNull(email, nameof(email));
         Guard.NotNull(password, nameof(password));
-        Guard.NotNullOrWhiteSpace(role, nameof(role));
+        Guard.NotEmpty(roleId, nameof(roleId));
 
         var user = new AppUser
         {
             TenantId = tenantId,
             Email = email,
             Password = password,
-            Role = role
+            RoleId = roleId
         };
 
         user.AddDomainEvent(new UserRegisteredEvent(tenantId, user.Id, email.Value));
         return user;
     }
 
-    public void ChangeRole(string newRole)
+    public void AssignRole(Guid oldRoleId, Guid newRoleId)
     {
-        Guard.NotNullOrWhiteSpace(newRole, nameof(newRole));
-        var old = Role;
-        Role = newRole;
+        Guard.NotEmpty(newRoleId, nameof(newRoleId));
+        RoleId = newRoleId;
         Touch();
-        AddDomainEvent(new UserRoleChangedEvent(TenantId, Id, old, newRole));
+        AddDomainEvent(new UserRoleChangedEvent(TenantId, Id, oldRoleId, newRoleId));
     }
 
     public void Deactivate()

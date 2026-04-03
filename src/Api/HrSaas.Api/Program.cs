@@ -1,3 +1,4 @@
+using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Api.Infrastructure.HealthChecks;
 using HrSaas.Api.Infrastructure.Idempotency;
 using HrSaas.Api.Infrastructure.Observability;
@@ -41,6 +42,7 @@ try
         });
 
     builder.Services.AddAuthorization();
+    builder.Services.AddPermissionAuthorization();
 
     builder.Services.AddTenantSdk();
 

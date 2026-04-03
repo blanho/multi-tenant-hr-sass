@@ -20,11 +20,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.OwnsOne(u => u.Password, p => {
             p.Property(x => x.Value).HasColumnName("password_hash").HasMaxLength(512).IsRequired();
         });
-        builder.Property(u => u.Role).HasMaxLength(32).IsRequired();
+        builder.Property(u => u.RoleId).IsRequired();
+        builder.HasOne<Role>().WithMany().HasForeignKey(u => u.RoleId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(u => u.IsActive).IsRequired();
         builder.Property(u => u.CreatedAt).IsRequired();
         builder.Property(u => u.UpdatedAt);
         builder.HasIndex(u => new { u.TenantId, u.Id }).IsUnique();
         builder.HasIndex("TenantId", "email").IsUnique();
+        builder.HasQueryFilter(u => !u.IsDeleted);
     }
 }
