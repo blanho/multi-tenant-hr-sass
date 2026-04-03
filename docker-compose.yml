@@ -1,117 +1,74 @@
 services:
-
-  # ─── Main API ──────────────────────────────────────────────────────────────
-  hrsaas-api:
-    build:
-      context: .
-      dockerfile: src/Api/HrSaas.Api/Dockerfile
-    container_name: hrsaas-api
-    ports:
-      - "8080:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__Default=Host=postgres;Port=5432;Database=hrsaas;Username=hrsaas;Password=hrsaas_secret
-      - Jwt__SecretKey=DEVELOPMENT_ONLY_KEY_REPLACE_IN_PROD_32chars!
-      - Jwt__Issuer=HrSaas
-      - Jwt__Audience=HrSaas-API
-      - RabbitMq__Host=amqp://rabbitmq
-      - RabbitMq__Username=guest
-      - RabbitMq__Password=guest
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - hrsaas-net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ─── PostgreSQL ────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: hrsaas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hrsaas
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_DB: hrsaas
-      POSTGRES_USER: hrsaas
-      POSTGRES_PASSWORD: hrsaas_secret
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - hrsaas-net
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hrsaas -d hrsaas"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ─── RabbitMQ ──────────────────────────────────────────────────────────────
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: hrsaas-rabbitmq
-    ports:
-      - "5672:5672"     # AMQP
-      - "15672:15672"   # Management UI (http://localhost:15672, guest/guest)
+    restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - hrsaas-net
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
       retries: 5
 
-  # ─── Redis (cache + rate limiting) ─────────────────────────────────────────
   redis:
-    image: redis:7.2-alpine
+    image: redis:7-alpine
     container_name: hrsaas-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server --save 60 1 --loglevel warning
+    command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
-    networks:
-      - hrsaas-net
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
 
-  # ─── Seq (structured logging UI) ───────────────────────────────────────────
-  seq:
-    image: datalust/seq:2024.3
-    container_name: hrsaas-seq
-    ports:
-      - "5341:5341"   # Ingestion
-      - "8090:80"     # UI (http://localhost:8090)
-    environment:
-      ACCEPT_EULA: "Y"
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: hrsaas-otel
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
-      - seq_data:/data
-    networks:
-      - hrsaas-net
+      - ./infra/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
 
-# ─── Volumes ──────────────────────────────────────────────────────────────────
+  seq:
+    image: datalust/seq:latest
+    container_name: hrsaas-seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+    ports:
+      - "5341:5341"
+      - "8080:80"
+
 volumes:
-  postgres_data:
-  rabbitmq_data:
-  redis_data:
-  seq_data:
-
-# ─── Networks ─────────────────────────────────────────────────────────────────
-networks:
-  hrsaas-net:
-    driver: bridge
+  postgres-data:
+  redis-data:
