@@ -15,7 +15,9 @@ public static class IdentityModule
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<IdentityDbContext>(opts =>
-            opts.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            opts.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_identity", "identity")));
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();

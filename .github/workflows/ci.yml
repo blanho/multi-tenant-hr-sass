@@ -48,7 +48,7 @@ jobs:
 
       - name: Unit Tests
         run: >
-          dotnet test tests/HrSaas.Modules.Employee.UnitTests/HrSaas.Modules.Employee.UnitTests.csproj
+          dotnet test HrSaas.sln
           --no-build --configuration Release
           --logger "trx;LogFileName=unit-tests.trx"
           --collect "XPlat Code Coverage"

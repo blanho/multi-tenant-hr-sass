@@ -16,7 +16,9 @@ public static class LeaveModule
     public static IServiceCollection AddLeaveModule(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<LeaveDbContext>(opts =>
-            opts.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            opts.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_leave", "leave")));
 
         services.AddScoped<ILeaveRepository, LeaveRepository>();
         services.AddScoped<ILeaveBalanceRepository, LeaveBalanceRepository>();

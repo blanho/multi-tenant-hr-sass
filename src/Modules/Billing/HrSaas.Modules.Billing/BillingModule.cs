@@ -16,7 +16,9 @@ public static class BillingModule
     public static IServiceCollection AddBillingModule(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<BillingDbContext>(opts =>
-            opts.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            opts.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_billing", "billing")));
 
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IBillingPolicy, DefaultBillingPolicy>();

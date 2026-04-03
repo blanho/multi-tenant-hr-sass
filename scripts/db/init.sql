@@ -23,3 +23,6 @@ CREATE TABLE IF NOT EXISTS public.outbox_messages (
 CREATE INDEX IF NOT EXISTS idx_outbox_unprocessed
     ON public.outbox_messages(occurred_at)
     WHERE processed_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_identity_users_tenant_email
+    ON identity.users(tenant_id, email);

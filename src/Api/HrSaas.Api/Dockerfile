@@ -17,6 +17,12 @@ COPY ["src/Modules/Billing/HrSaas.Modules.Billing/HrSaas.Modules.Billing.csproj"
 COPY ["src/BuildingBlocks/SharedKernel/HrSaas.SharedKernel/HrSaas.SharedKernel.csproj", "src/BuildingBlocks/SharedKernel/HrSaas.SharedKernel/"]
 COPY ["src/BuildingBlocks/TenantSdk/HrSaas.TenantSdk/HrSaas.TenantSdk.csproj", "src/BuildingBlocks/TenantSdk/HrSaas.TenantSdk/"]
 COPY ["src/BuildingBlocks/EventBus/HrSaas.EventBus/HrSaas.EventBus.csproj", "src/BuildingBlocks/EventBus/HrSaas.EventBus/"]
+COPY ["src/BuildingBlocks/Contracts/HrSaas.Contracts/HrSaas.Contracts.csproj", "src/BuildingBlocks/Contracts/HrSaas.Contracts/"]
+COPY ["src/Modules/Notifications/HrSaas.Modules.Notifications/HrSaas.Modules.Notifications.csproj", "src/Modules/Notifications/HrSaas.Modules.Notifications/"]
+
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Packages.props", "./"]
+COPY ["global.json", "./"]
 
 RUN dotnet restore "src/Api/HrSaas.Api/HrSaas.Api.csproj"
 

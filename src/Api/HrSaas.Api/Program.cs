@@ -17,6 +17,7 @@ using HrSaas.TenantSdk;
 using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -89,10 +90,45 @@ try
     builder.Services.AddTenantRateLimiting();
     builder.Services.AddModuleHealthChecks(builder.Configuration);
 
+    builder.Services.AddCors(options =>
+        options.AddPolicy("AllowAll", policy =>
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()));
+
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();
 
     var app = builder.Build();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Employee.Infrastructure.Persistence.EmployeeDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Identity.Infrastructure.Persistence.IdentityDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Tenant.Infrastructure.Persistence.TenantDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Leave.Infrastructure.Persistence.LeaveDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Billing.Infrastructure.Persistence.BillingDbContext>()
+                .Database.MigrateAsync();
+            logger.LogInformation("All database migrations applied successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while applying database migrations");
+            throw;
+        }
+    }
 
     app.UseSerilogRequestLogging();
     app.UseMiddleware<HrSaas.Api.Middleware.ExceptionMiddleware>();

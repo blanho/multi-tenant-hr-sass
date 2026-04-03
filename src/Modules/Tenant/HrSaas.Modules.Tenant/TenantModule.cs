@@ -14,7 +14,9 @@ public static class TenantModule
     public static IServiceCollection AddTenantModule(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<TenantDbContext>(opts =>
-            opts.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            opts.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_tenant", "tenant")));
 
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(TenantModule).Assembly));

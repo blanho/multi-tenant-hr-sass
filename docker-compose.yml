@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -68,6 +69,39 @@ services:
     ports:
       - "5341:5341"
       - "8080:80"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Api/HrSaas.Api/Dockerfile
+    container_name: hrsaas-api
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=hrsaas;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}
+      ConnectionStrings__RabbitMQ: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672/
+      ConnectionStrings__Redis: redis:6379
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Jwt__Issuer: HrSaas
+      Jwt__Audience: hrsaas-api
+      Telemetry__OtlpEndpoint: http://otel-collector:4317
+      Serilog__WriteTo__1__Name: Seq
+      Serilog__WriteTo__1__Args__serverUrl: http://seq:5341
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres-data:
