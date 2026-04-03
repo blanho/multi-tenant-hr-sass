@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\SharedKernel\HrSaas.SharedKernel\HrSaas.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

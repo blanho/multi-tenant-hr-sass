@@ -1,6 +1,6 @@
+using HrSaas.Contracts.Employee;
 using HrSaas.EventBus;
 using HrSaas.Modules.Employee.Domain.Events;
-using HrSaas.Modules.Employee.Domain.IntegrationEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +22,9 @@ public sealed class EmployeeCreatedEventHandler(
             notification.TenantId,
             notification.EmployeeId,
             notification.Name,
-            notification.Department);
+            notification.Department,
+            notification.Position,
+            notification.Email);
 
         await eventBus.PublishAsync(integrationEvent, ct).ConfigureAwait(false);
     }

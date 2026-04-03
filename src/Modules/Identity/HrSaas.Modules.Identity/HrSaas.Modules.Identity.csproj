@@ -13,4 +13,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\TenantSdk\HrSaas.TenantSdk\HrSaas.TenantSdk.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\EventBus\HrSaas.EventBus\HrSaas.EventBus.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Contracts\HrSaas.Contracts\HrSaas.Contracts.csproj" />
+  </ItemGroup>
 </Project>

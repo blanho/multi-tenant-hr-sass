@@ -7,7 +7,8 @@ public sealed record EmployeeCreatedEvent(
     Guid EmployeeId,
     string Name,
     string Department,
-    string Position) : IDomainEvent
+    string Position,
+    string Email) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }

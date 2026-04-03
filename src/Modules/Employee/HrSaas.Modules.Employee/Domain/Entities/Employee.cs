@@ -43,7 +43,7 @@ public sealed class Employee : BaseEntity
         };
 
         employee.AddDomainEvent(new EmployeeCreatedEvent(
-            tenantId, employee.Id, name, department, position));
+            tenantId, employee.Id, name, department, position, employee.Email));
 
         return employee;
     }
