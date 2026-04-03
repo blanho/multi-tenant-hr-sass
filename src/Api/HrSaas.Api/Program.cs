@@ -66,10 +66,17 @@ try
 
     builder.Services.AddMassTransit(x =>
     {
+        x.AddConsumers(
+            typeof(BillingModule).Assembly,
+            typeof(EmployeeModule).Assembly,
+            typeof(IdentityModule).Assembly,
+            typeof(LeaveModule).Assembly,
+            typeof(TenantModule).Assembly);
+
         x.UsingRabbitMq((ctx, cfg) =>
         {
             cfg.Host(builder.Configuration.GetConnectionString("RabbitMQ"));
-            cfg.ConfigureEndpoints(ctx);
+            cfg.ApplyHrSaasTopology(ctx);
         });
     });
 
