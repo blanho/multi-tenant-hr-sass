@@ -1,111 +1,113 @@
-using HrSaas.Api.Middleware;
+using HrSaas.Api.Infrastructure.HealthChecks;
+using HrSaas.Api.Infrastructure.Idempotency;
+using HrSaas.Api.Infrastructure.Observability;
+using HrSaas.Api.Infrastructure.RateLimiting;
+using HrSaas.Api.Infrastructure.Versioning;
+using HrSaas.Modules.Billing;
 using HrSaas.Modules.Employee;
+using HrSaas.Modules.Identity;
+using HrSaas.Modules.Leave;
+using HrSaas.Modules.Tenant;
 using HrSaas.SharedKernel.Behaviors;
+using HrSaas.SharedKernel.Interceptors;
 using HrSaas.TenantSdk;
 using MassTransit;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Serilog;
-using Serilog.Context;
-using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
-builder.Host.UseSerilog((ctx, cfg) =>
-    cfg.ReadFrom.Configuration(ctx.Configuration)
-       .Enrich.FromLogContext()
-       .Enrich.WithProperty("Application", "HrSaas")
-       .Enrich.WithProperty("Environment", ctx.HostingEnvironment.EnvironmentName));
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
 
-var jwtKey = builder.Configuration["Jwt:SecretKey"]
-    ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
+    builder.Host.UseSerilog((ctx, lc) => lc
+        .ReadFrom.Configuration(ctx.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithThreadId());
 
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
+    builder.Services.AddTelemetry(builder.Configuration);
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(opts =>
         {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
+            opts.Authority = builder.Configuration["Jwt:Authority"];
+            opts.Audience = builder.Configuration["Jwt:Audience"];
+            opts.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        });
+
+    builder.Services.AddAuthorization();
+
+    builder.Services.AddTenantSdk();
+
+    builder.Services.AddScoped<AuditableEntityInterceptor>();
+    builder.Services.AddScoped<DomainEventDispatcherInterceptor>();
+
+    builder.Services.AddEmployeeModule(builder.Configuration);
+    builder.Services.AddIdentityModule(builder.Configuration);
+    builder.Services.AddTenantModule(builder.Configuration);
+    builder.Services.AddLeaveModule(builder.Configuration);
+    builder.Services.AddBillingModule(builder.Configuration);
+
+    builder.Services.AddMediatR(cfg =>
+    {
+        cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+        cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
     });
 
-builder.Services.AddAuthorization();
+    builder.Services.AddStackExchangeRedisCache(opts =>
+        opts.Configuration = builder.Configuration.GetConnectionString("Redis"));
 
-builder.Services.AddTenantSdk();
-
-builder.Services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-builder.Services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
-builder.Services.AddEmployeeModule(builder.Configuration);
-
-builder.Services.AddMassTransit(x =>
-{
-
-    if (builder.Environment.IsDevelopment())
-    {
-        x.UsingInMemory((ctx, cfg) => cfg.ConfigureEndpoints(ctx));
-    }
-    else
+    builder.Services.AddMassTransit(x =>
     {
         x.UsingRabbitMq((ctx, cfg) =>
         {
-            cfg.Host(builder.Configuration["RabbitMq:Host"], h =>
-            {
-                h.Username(builder.Configuration["RabbitMq:Username"]!);
-                h.Password(builder.Configuration["RabbitMq:Password"]!);
-            });
+            cfg.Host(builder.Configuration.GetConnectionString("RabbitMQ"));
             cfg.ConfigureEndpoints(ctx);
         });
-    }
-});
+    });
 
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("Default")!);
+    builder.Services.AddApiVersioningSetup();
+    builder.Services.AddTenantRateLimiting();
+    builder.Services.AddModuleHealthChecks(builder.Configuration);
 
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
-});
+    builder.Services.AddControllers();
+    builder.Services.AddOpenApi();
 
-var app = builder.Build();
+    var app = builder.Build();
 
+    app.UseSerilogRequestLogging();
+    app.UseMiddleware<HrSaas.Api.Middleware.ExceptionMiddleware>();
 
-app.UseMiddleware<ExceptionMiddleware>();
-app.UseHttpsRedirection();
-app.UseSerilogRequestLogging(opts =>
-{
-    opts.EnrichDiagnosticContext = (diag, ctx) =>
+    if (app.Environment.IsDevelopment())
     {
-        diag.Set("RequestHost", ctx.Request.Host.Value);
-        diag.Set("RequestScheme", ctx.Request.Scheme);
-        if (ctx.User.FindFirst("tenant_id")?.Value is { } tid)
-            diag.Set("TenantId", tid);
-    };
-});
+        app.MapOpenApi();
+    }
 
-app.UseCors();
+    app.UseHttpsRedirection();
+    app.UseCors("AllowAll");
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseRateLimiter();
+    app.UseMiddleware<TenantMiddleware>();
+    app.UseMiddleware<IdempotencyMiddleware>();
 
-if (app.Environment.IsDevelopment())
+    app.MapControllers().RequireRateLimiting("api");
+    app.MapHealthCheckEndpoints();
+
+    app.Run();
+}
+catch (Exception ex)
 {
-    app.MapOpenApi();
+    Log.Fatal(ex, "Application terminated unexpectedly.");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseMiddleware<TenantMiddleware>();
-
-app.MapControllers();
-app.MapHealthChecks("/health");
-
-app.Run();
+public partial class Program { }
