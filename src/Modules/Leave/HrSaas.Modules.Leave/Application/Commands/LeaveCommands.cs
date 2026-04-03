@@ -40,17 +40,35 @@ public sealed class ApplyLeaveCommandHandler(ILeaveRepository repo) : IRequestHa
 
 public sealed record ApproveLeaveCommand(Guid TenantId, Guid LeaveRequestId, Guid ApprovedByUserId) : ICommand;
 
+public sealed class ApproveLeaveCommandValidator : AbstractValidator<ApproveLeaveCommand>
+{
+    public ApproveLeaveCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.LeaveRequestId).NotEmpty();
+        RuleFor(x => x.ApprovedByUserId).NotEmpty();
+    }
+}
+
 public sealed class ApproveLeaveCommandHandler(ILeaveRepository repo) : IRequestHandler<ApproveLeaveCommand, Result>
 {
     public async Task<Result> Handle(ApproveLeaveCommand request, CancellationToken cancellationToken)
     {
-        var leave = await repo.GetByIdAsync(request.LeaveRequestId, cancellationToken).ConfigureAwait(false);
-        if (leave is null || leave.TenantId != request.TenantId)
+        var leave = await repo.GetByIdForTenantAsync(request.LeaveRequestId, request.TenantId, cancellationToken).ConfigureAwait(false);
+        if (leave is null)
         {
             return Result.Failure("Leave request not found.", "NOT_FOUND");
         }
 
-        leave.Approve(request.ApprovedByUserId);
+        try
+        {
+            leave.Approve(request.ApprovedByUserId);
+        }
+        catch (SharedKernel.Exceptions.DomainException ex)
+        {
+            return Result.Failure(ex.Message, "INVALID_STATE");
+        }
+
         repo.Update(leave);
         await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
@@ -59,17 +77,78 @@ public sealed class ApproveLeaveCommandHandler(ILeaveRepository repo) : IRequest
 
 public sealed record RejectLeaveCommand(Guid TenantId, Guid LeaveRequestId, Guid RejectedByUserId, string Note) : ICommand;
 
+public sealed class RejectLeaveCommandValidator : AbstractValidator<RejectLeaveCommand>
+{
+    public RejectLeaveCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.LeaveRequestId).NotEmpty();
+        RuleFor(x => x.RejectedByUserId).NotEmpty();
+        RuleFor(x => x.Note).NotEmpty().MaximumLength(1000);
+    }
+}
+
 public sealed class RejectLeaveCommandHandler(ILeaveRepository repo) : IRequestHandler<RejectLeaveCommand, Result>
 {
     public async Task<Result> Handle(RejectLeaveCommand request, CancellationToken cancellationToken)
     {
-        var leave = await repo.GetByIdAsync(request.LeaveRequestId, cancellationToken).ConfigureAwait(false);
-        if (leave is null || leave.TenantId != request.TenantId)
+        var leave = await repo.GetByIdForTenantAsync(request.LeaveRequestId, request.TenantId, cancellationToken).ConfigureAwait(false);
+        if (leave is null)
         {
             return Result.Failure("Leave request not found.", "NOT_FOUND");
         }
 
-        leave.Reject(request.RejectedByUserId, request.Note);
+        try
+        {
+            leave.Reject(request.RejectedByUserId, request.Note);
+        }
+        catch (SharedKernel.Exceptions.DomainException ex)
+        {
+            return Result.Failure(ex.Message, "INVALID_STATE");
+        }
+
+        repo.Update(leave);
+        await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
+    }
+}
+
+public sealed record CancelLeaveCommand(Guid TenantId, Guid LeaveRequestId, Guid EmployeeId) : ICommand;
+
+public sealed class CancelLeaveCommandValidator : AbstractValidator<CancelLeaveCommand>
+{
+    public CancelLeaveCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.LeaveRequestId).NotEmpty();
+        RuleFor(x => x.EmployeeId).NotEmpty();
+    }
+}
+
+public sealed class CancelLeaveCommandHandler(ILeaveRepository repo) : IRequestHandler<CancelLeaveCommand, Result>
+{
+    public async Task<Result> Handle(CancelLeaveCommand request, CancellationToken cancellationToken)
+    {
+        var leave = await repo.GetByIdForTenantAsync(request.LeaveRequestId, request.TenantId, cancellationToken).ConfigureAwait(false);
+        if (leave is null)
+        {
+            return Result.Failure("Leave request not found.", "NOT_FOUND");
+        }
+
+        if (leave.EmployeeId != request.EmployeeId)
+        {
+            return Result.Failure("Only the owner can cancel their leave request.", "FORBIDDEN");
+        }
+
+        try
+        {
+            leave.Cancel(request.EmployeeId);
+        }
+        catch (SharedKernel.Exceptions.DomainException ex)
+        {
+            return Result.Failure(ex.Message, "INVALID_STATE");
+        }
+
         repo.Update(leave);
         await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();

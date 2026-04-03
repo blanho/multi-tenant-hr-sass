@@ -50,41 +50,54 @@ public sealed class LeaveRequest : BaseEntity
 
     public void Approve(Guid approvedByUserId)
     {
+        Guard.NotEmpty(approvedByUserId, nameof(approvedByUserId));
+
         if (Status != LeaveStatus.Pending)
         {
-            throw new DomainException($"Cannot approve a leave request in {Status} status.");
+            throw new DomainException($"Cannot approve a leave request in '{Status}' status.");
         }
 
         Status = LeaveStatus.Approved;
         ApprovedByUserId = approvedByUserId;
         DecisionAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         AddDomainEvent(new LeaveApprovedEvent(TenantId, Id, EmployeeId, approvedByUserId));
     }
 
     public void Reject(Guid rejectedByUserId, string note)
     {
+        Guard.NotEmpty(rejectedByUserId, nameof(rejectedByUserId));
+        Guard.NotNullOrWhiteSpace(note, nameof(note));
+
         if (Status != LeaveStatus.Pending)
         {
-            throw new DomainException($"Cannot reject a leave request in {Status} status.");
+            throw new DomainException($"Cannot reject a leave request in '{Status}' status.");
         }
 
         Status = LeaveStatus.Rejected;
         RejectionNote = note;
         DecisionAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         AddDomainEvent(new LeaveRejectedEvent(TenantId, Id, EmployeeId, note));
     }
 
-    public void Cancel()
+    public void Cancel(Guid cancelledByEmployeeId)
     {
+        Guard.NotEmpty(cancelledByEmployeeId, nameof(cancelledByEmployeeId));
+
         if (Status == LeaveStatus.Approved || Status == LeaveStatus.Rejected)
         {
             throw new DomainException("Cannot cancel an already decided leave request.");
         }
 
+        if (Status == LeaveStatus.Cancelled)
+        {
+            throw new DomainException("Leave request is already cancelled.");
+        }
+
         Status = LeaveStatus.Cancelled;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
+        AddDomainEvent(new LeaveCancelledEvent(TenantId, Id, EmployeeId, cancelledByEmployeeId));
     }
 
     public int GetDurationDays() => (int)(EndDate - StartDate).TotalDays + 1;

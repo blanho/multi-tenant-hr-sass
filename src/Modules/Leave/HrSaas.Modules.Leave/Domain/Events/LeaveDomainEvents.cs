@@ -16,3 +16,8 @@ public sealed record LeaveRejectedEvent(Guid TenantId, Guid LeaveRequestId, Guid
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
+
+public sealed record LeaveCancelledEvent(Guid TenantId, Guid LeaveRequestId, Guid EmployeeId, Guid CancelledByEmployeeId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}

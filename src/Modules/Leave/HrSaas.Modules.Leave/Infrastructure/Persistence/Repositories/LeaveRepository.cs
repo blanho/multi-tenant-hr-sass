@@ -9,6 +9,9 @@ public sealed class LeaveRepository(LeaveDbContext dbContext) : ILeaveRepository
     public async Task<LeaveRequest?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         await dbContext.LeaveRequests.FirstOrDefaultAsync(l => l.Id == id, ct).ConfigureAwait(false);
 
+    public async Task<LeaveRequest?> GetByIdForTenantAsync(Guid id, Guid tenantId, CancellationToken ct = default) =>
+        await dbContext.LeaveRequests.FirstOrDefaultAsync(l => l.Id == id && l.TenantId == tenantId, ct).ConfigureAwait(false);
+
     public async Task<IReadOnlyList<LeaveRequest>> GetByEmployeeAsync(Guid tenantId, Guid employeeId, CancellationToken ct = default) =>
         await dbContext.LeaveRequests.Where(l => l.TenantId == tenantId && l.EmployeeId == employeeId && !l.IsDeleted).OrderByDescending(l => l.CreatedAt).ToListAsync(ct).ConfigureAwait(false);
 

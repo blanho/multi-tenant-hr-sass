@@ -5,6 +5,24 @@ using MediatR;
 
 namespace HrSaas.Modules.Leave.Application.Queries;
 
+public sealed record GetLeaveByIdQuery(Guid TenantId, Guid LeaveRequestId) : IQuery<LeaveRequestDto>;
+
+public sealed class GetLeaveByIdQueryHandler(ILeaveRepository repo) : IRequestHandler<GetLeaveByIdQuery, Result<LeaveRequestDto>>
+{
+    public async Task<Result<LeaveRequestDto>> Handle(GetLeaveByIdQuery request, CancellationToken cancellationToken)
+    {
+        var leave = await repo.GetByIdForTenantAsync(request.LeaveRequestId, request.TenantId, cancellationToken).ConfigureAwait(false);
+        if (leave is null)
+        {
+            return Result<LeaveRequestDto>.Failure("Leave request not found.", "NOT_FOUND");
+        }
+
+        return Result<LeaveRequestDto>.Success(new LeaveRequestDto(
+            leave.Id, leave.TenantId, leave.EmployeeId, leave.Type.ToString(), leave.Status.ToString(),
+            leave.StartDate, leave.EndDate, leave.Reason, leave.RejectionNote, leave.GetDurationDays(), leave.CreatedAt));
+    }
+}
+
 public sealed record GetLeavesByEmployeeQuery(Guid TenantId, Guid EmployeeId) : IQuery<IReadOnlyList<LeaveRequestDto>>;
 
 public sealed class GetLeavesByEmployeeQueryHandler(ILeaveRepository repo) : IRequestHandler<GetLeavesByEmployeeQuery, Result<IReadOnlyList<LeaveRequestDto>>>

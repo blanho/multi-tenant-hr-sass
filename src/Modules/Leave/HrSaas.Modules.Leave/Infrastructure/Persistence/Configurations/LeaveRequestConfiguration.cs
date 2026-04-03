@@ -19,8 +19,10 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
         builder.Property(l => l.EndDate).IsRequired();
         builder.Property(l => l.Reason).HasMaxLength(1000).IsRequired();
         builder.Property(l => l.RejectionNote).HasMaxLength(1000);
-        builder.HasQueryFilter(l => l.TenantId == l.TenantId && !l.IsDeleted);
+        builder.Property(l => l.ApprovedByUserId);
+        builder.Property(l => l.DecisionAt);
         builder.HasIndex(l => new { l.TenantId, l.EmployeeId });
         builder.HasIndex(l => new { l.TenantId, l.Status });
+        builder.HasIndex(l => new { l.TenantId, l.StartDate, l.EndDate });
     }
 }

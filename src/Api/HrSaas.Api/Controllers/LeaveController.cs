@@ -26,6 +26,16 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
         return Ok(result.Value);
     }
 
+    [HttpGet("{leaveId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid leaveId, CancellationToken ct)
+    {
+        var tenantId = tenantService.GetCurrentTenantId();
+        var result = await mediator.Send(new GetLeaveByIdQuery(tenantId, leaveId), ct);
+        return result.IsSuccess ? Ok(result.Value) : NotFound(result.Error);
+    }
+
     [HttpGet("pending")]
     [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -47,31 +57,60 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
             return BadRequest(result.Error);
         }
 
-        return CreatedAtAction(nameof(GetByEmployee), new { employeeId = command.EmployeeId }, new { id = result.Value });
+        return CreatedAtAction(nameof(GetById), new { leaveId = result.Value }, new { id = result.Value });
     }
 
     [HttpPost("{leaveId:guid}/approve")]
     [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Approve(Guid leaveId, CancellationToken ct)
     {
         var tenantId = tenantService.GetCurrentTenantId();
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await mediator.Send(new ApproveLeaveCommand(tenantId, leaveId, userId), ct);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error);
+        if (!result.IsSuccess)
+        {
+            return result.ErrorCode == "NOT_FOUND" ? NotFound(result.Error) : BadRequest(result.Error);
+        }
+
+        return NoContent();
     }
 
     [HttpPost("{leaveId:guid}/reject")]
     [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Reject(Guid leaveId, [FromBody] RejectRequest request, CancellationToken ct)
     {
         var tenantId = tenantService.GetCurrentTenantId();
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await mediator.Send(new RejectLeaveCommand(tenantId, leaveId, userId, request.Note), ct);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error);
+        if (!result.IsSuccess)
+        {
+            return result.ErrorCode == "NOT_FOUND" ? NotFound(result.Error) : BadRequest(result.Error);
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{leaveId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Cancel(Guid leaveId, CancellationToken ct)
+    {
+        var tenantId = tenantService.GetCurrentTenantId();
+        var employeeId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await mediator.Send(new CancelLeaveCommand(tenantId, leaveId, employeeId), ct);
+        if (!result.IsSuccess)
+        {
+            return result.ErrorCode == "NOT_FOUND" ? NotFound(result.Error) : BadRequest(result.Error);
+        }
+
+        return NoContent();
     }
 }
 
