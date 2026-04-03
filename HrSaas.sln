@@ -41,6 +41,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.IntegrationTests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.Contracts", "src\BuildingBlocks\Contracts\HrSaas.Contracts\HrSaas.Contracts.csproj", "{9095CE63-81A8-4A1D-A330-7C043B506141}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.Modules.Notifications", "src\Modules\Notifications\HrSaas.Modules.Notifications\HrSaas.Modules.Notifications.csproj", "{A5674FAC-3355-417C-A7BA-743362559A57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -207,6 +209,18 @@ Global
 		{9095CE63-81A8-4A1D-A330-7C043B506141}.Release|x64.Build.0 = Release|Any CPU
 		{9095CE63-81A8-4A1D-A330-7C043B506141}.Release|x86.ActiveCfg = Release|Any CPU
 		{9095CE63-81A8-4A1D-A330-7C043B506141}.Release|x86.Build.0 = Release|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Debug|x64.Build.0 = Debug|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Debug|x86.Build.0 = Debug|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Release|x64.ActiveCfg = Release|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Release|x64.Build.0 = Release|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Release|x86.ActiveCfg = Release|Any CPU
+		{A5674FAC-3355-417C-A7BA-743362559A57}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -229,5 +243,6 @@ Global
 		{AA000011-0000-0000-0000-000000000011} = {66666666-6666-6666-6666-666666666666}
 		{AA000012-0000-0000-0000-000000000012} = {66666666-6666-6666-6666-666666666666}
 		{9095CE63-81A8-4A1D-A330-7C043B506141} = {22222222-2222-2222-2222-222222222222}
+		{A5674FAC-3355-417C-A7BA-743362559A57} = {33333333-3333-3333-3333-333333333333}
 	EndGlobalSection
 EndGlobal

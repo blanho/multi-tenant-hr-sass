@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SharedKernel\HrSaas.SharedKernel\HrSaas.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EventBus\HrSaas.EventBus\HrSaas.EventBus.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Contracts\HrSaas.Contracts\HrSaas.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

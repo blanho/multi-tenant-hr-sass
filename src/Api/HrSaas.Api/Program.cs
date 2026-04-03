@@ -8,6 +8,7 @@ using HrSaas.Modules.Billing;
 using HrSaas.Modules.Employee;
 using HrSaas.Modules.Identity;
 using HrSaas.Modules.Leave;
+using HrSaas.Modules.Notifications;
 using HrSaas.Modules.Tenant;
 using HrSaas.SharedKernel.Behaviors;
 using HrSaas.SharedKernel.Interceptors;
@@ -53,6 +54,7 @@ try
     builder.Services.AddTenantModule(builder.Configuration);
     builder.Services.AddLeaveModule(builder.Configuration);
     builder.Services.AddBillingModule(builder.Configuration);
+    builder.Services.AddNotificationsModule(builder.Configuration);
 
     builder.Services.AddMediatR(cfg =>
     {
@@ -71,7 +73,8 @@ try
             typeof(EmployeeModule).Assembly,
             typeof(IdentityModule).Assembly,
             typeof(LeaveModule).Assembly,
-            typeof(TenantModule).Assembly);
+            typeof(TenantModule).Assembly,
+            typeof(NotificationsModule).Assembly);
 
         x.UsingRabbitMq((ctx, cfg) =>
         {
