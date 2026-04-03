@@ -120,6 +120,15 @@ public sealed record DeleteRoleCommand(
     Guid TenantId,
     Guid RoleId) : ICommand;
 
+public sealed class DeleteRoleCommandValidator : AbstractValidator<DeleteRoleCommand>
+{
+    public DeleteRoleCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.RoleId).NotEmpty();
+    }
+}
+
 public sealed class DeleteRoleCommandHandler(
     IRoleRepository roleRepository) : IRequestHandler<DeleteRoleCommand, Result>
 {

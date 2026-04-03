@@ -34,7 +34,7 @@ public sealed class Subscription : BaseEntity
             MaxSeats = 10,
             CurrentPeriodStart = DateTime.UtcNow
         };
-        sub.AddDomainEvent(new SubscriptionCreatedEvent(tenantId, sub.Id, "Free"));
+        sub.AddDomainEvent(new SubscriptionCreatedEvent(tenantId, sub.Id, "Free", sub.MaxSeats, sub.Cycle.ToString()));
         return sub;
     }
 
@@ -50,7 +50,7 @@ public sealed class Subscription : BaseEntity
             MaxSeats = 25,
             TrialEndsAt = DateTime.UtcNow.AddDays(trialDays)
         };
-        sub.AddDomainEvent(new SubscriptionCreatedEvent(tenantId, sub.Id, planName));
+        sub.AddDomainEvent(new SubscriptionCreatedEvent(tenantId, sub.Id, planName, sub.MaxSeats, sub.Cycle.ToString()));
         return sub;
     }
 
@@ -65,7 +65,7 @@ public sealed class Subscription : BaseEntity
             ? DateTime.UtcNow.AddMonths(1)
             : DateTime.UtcNow.AddYears(1);
         UpdatedAt = DateTime.UtcNow;
-        AddDomainEvent(new SubscriptionActivatedEvent(TenantId, Id, PlanName));
+        AddDomainEvent(new SubscriptionActivatedEvent(TenantId, Id, PlanName, PricePerCycle, Cycle.ToString()));
     }
 
     public void Cancel(string reason)

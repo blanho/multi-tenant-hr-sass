@@ -44,7 +44,7 @@ public sealed class Tenant : BaseEntity
         };
 
         tenant.TenantId = tenant.Id;
-        tenant.AddDomainEvent(new TenantCreatedEvent(tenant.Id, name, plan.ToString()));
+        tenant.AddDomainEvent(new TenantCreatedEvent(tenant.Id, name, tenant.Slug, tenant.ContactEmail, plan.ToString()));
         return tenant;
     }
 
@@ -65,7 +65,7 @@ public sealed class Tenant : BaseEntity
         Plan = newPlan;
         MaxEmployees = PlanLimits[newPlan];
         Touch();
-        AddDomainEvent(new TenantPlanUpgradedEvent(TenantId, oldPlan.ToString(), newPlan.ToString()));
+        AddDomainEvent(new TenantPlanUpgradedEvent(TenantId, oldPlan.ToString(), newPlan.ToString(), MaxEmployees));
     }
 
     public void Suspend(string reason)

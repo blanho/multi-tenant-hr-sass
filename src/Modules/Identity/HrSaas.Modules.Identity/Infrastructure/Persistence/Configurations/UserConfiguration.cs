@@ -27,6 +27,5 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.Property(u => u.UpdatedAt);
         builder.HasIndex(u => new { u.TenantId, u.Id }).IsUnique();
         builder.HasIndex("TenantId", "email").IsUnique();
-        builder.HasQueryFilter(u => !u.IsDeleted);
     }
 }

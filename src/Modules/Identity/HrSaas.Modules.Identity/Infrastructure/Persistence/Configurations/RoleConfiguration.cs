@@ -19,6 +19,5 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(r => r.CreatedAt).IsRequired();
         builder.Property(r => r.UpdatedAt);
         builder.HasIndex(r => new { r.TenantId, r.Name }).IsUnique();
-        builder.HasQueryFilter(r => !r.IsDeleted);
     }
 }

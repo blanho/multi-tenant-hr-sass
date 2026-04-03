@@ -29,7 +29,7 @@ public sealed class AppUser : BaseEntity
             RoleId = roleId
         };
 
-        user.AddDomainEvent(new UserRegisteredEvent(tenantId, user.Id, email.Value));
+        user.AddDomainEvent(new UserRegisteredEvent(tenantId, user.Id, email.Value, roleId));
         return user;
     }
 
@@ -45,7 +45,7 @@ public sealed class AppUser : BaseEntity
     {
         IsActive = false;
         Touch();
-        AddDomainEvent(new UserDeactivatedEvent(TenantId, Id));
+        AddDomainEvent(new UserDeactivatedEvent(TenantId, Id, Email.Value));
     }
 
     public void Activate()

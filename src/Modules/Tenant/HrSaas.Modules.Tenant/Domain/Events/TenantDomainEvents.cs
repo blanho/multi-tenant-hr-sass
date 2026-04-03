@@ -2,12 +2,14 @@ using HrSaas.SharedKernel.Events;
 
 namespace HrSaas.Modules.Tenant.Domain.Events;
 
-public sealed record TenantCreatedEvent(Guid TenantId, string Name, string Plan) : IDomainEvent
+public sealed record TenantCreatedEvent(
+    Guid TenantId, string Name, string Slug, string ContactEmail, string Plan) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
-public sealed record TenantPlanUpgradedEvent(Guid TenantId, string OldPlan, string NewPlan) : IDomainEvent
+public sealed record TenantPlanUpgradedEvent(
+    Guid TenantId, string OldPlan, string NewPlan, int NewMaxEmployees) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }

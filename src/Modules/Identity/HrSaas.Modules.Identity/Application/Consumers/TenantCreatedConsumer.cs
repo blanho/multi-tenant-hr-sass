@@ -1,6 +1,7 @@
 using HrSaas.Contracts.Tenant;
 using HrSaas.Modules.Identity.Application.Interfaces;
 using HrSaas.Modules.Identity.Infrastructure.Persistence.Seed;
+using HrSaas.TenantSdk;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -8,11 +9,13 @@ namespace HrSaas.Modules.Identity.Application.Consumers;
 
 public sealed class TenantCreatedConsumer(
     IRoleRepository roleRepository,
+    TenantContext tenantContext,
     ILogger<TenantCreatedConsumer> logger) : IConsumer<TenantCreatedIntegrationEvent>
 {
     public async Task Consume(ConsumeContext<TenantCreatedIntegrationEvent> context)
     {
         var msg = context.Message;
+        tenantContext.TenantId = msg.TenantId;
 
         var existingRoles = await roleRepository
             .GetAllAsync(msg.TenantId, context.CancellationToken)

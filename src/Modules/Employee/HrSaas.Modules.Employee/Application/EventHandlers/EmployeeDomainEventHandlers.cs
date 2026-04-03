@@ -72,3 +72,23 @@ public sealed class EmployeeDeletedEventHandler(
         await eventBus.PublishAsync(integrationEvent, ct).ConfigureAwait(false);
     }
 }
+
+public sealed class EmployeeDeactivatedEventHandler(
+    IEventBus eventBus,
+    ILogger<EmployeeDeactivatedEventHandler> logger)
+    : INotificationHandler<EmployeeDeactivatedEvent>
+{
+    public async Task Handle(EmployeeDeactivatedEvent notification, CancellationToken ct)
+    {
+        logger.LogInformation(
+            "Employee {EmployeeId} deactivated for tenant {TenantId}. Publishing integration event.",
+            notification.EmployeeId,
+            notification.TenantId);
+
+        var integrationEvent = new EmployeeDeactivatedIntegrationEvent(
+            notification.TenantId,
+            notification.EmployeeId);
+
+        await eventBus.PublishAsync(integrationEvent, ct).ConfigureAwait(false);
+    }
+}

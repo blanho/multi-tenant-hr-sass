@@ -1,5 +1,6 @@
 using HrSaas.Contracts.Tenant;
 using HrSaas.Modules.Identity.Application.Interfaces;
+using HrSaas.TenantSdk;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -7,11 +8,13 @@ namespace HrSaas.Modules.Identity.Application.Consumers;
 
 public sealed class TenantSuspendedConsumer(
     IUserRepository userRepository,
+    TenantContext tenantContext,
     ILogger<TenantSuspendedConsumer> logger) : IConsumer<TenantSuspendedIntegrationEvent>
 {
     public async Task Consume(ConsumeContext<TenantSuspendedIntegrationEvent> context)
     {
         var msg = context.Message;
+        tenantContext.TenantId = msg.TenantId;
 
         var users = await userRepository
             .GetAllAsync(msg.TenantId, context.CancellationToken)

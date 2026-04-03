@@ -9,6 +9,14 @@ namespace HrSaas.Modules.Billing.Application.Commands;
 
 public sealed record CreateFreeSubscriptionCommand(Guid TenantId) : ICommand<Guid>;
 
+public sealed class CreateFreeSubscriptionCommandValidator : AbstractValidator<CreateFreeSubscriptionCommand>
+{
+    public CreateFreeSubscriptionCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+    }
+}
+
 public sealed class CreateFreeSubscriptionCommandHandler(ISubscriptionRepository repo) : IRequestHandler<CreateFreeSubscriptionCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateFreeSubscriptionCommand request, CancellationToken cancellationToken)
@@ -27,6 +35,17 @@ public sealed class CreateFreeSubscriptionCommandHandler(ISubscriptionRepository
 }
 
 public sealed record ActivateSubscriptionCommand(Guid TenantId, Guid SubscriptionId, decimal Price, BillingCycle Cycle, string? ExternalId) : ICommand;
+
+public sealed class ActivateSubscriptionCommandValidator : AbstractValidator<ActivateSubscriptionCommand>
+{
+    public ActivateSubscriptionCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.SubscriptionId).NotEmpty();
+        RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Cycle).IsInEnum();
+    }
+}
 
 public sealed class ActivateSubscriptionCommandHandler(ISubscriptionRepository repo) : IRequestHandler<ActivateSubscriptionCommand, Result>
 {

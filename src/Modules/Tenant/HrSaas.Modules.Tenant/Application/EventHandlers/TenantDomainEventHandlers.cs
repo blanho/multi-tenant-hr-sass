@@ -20,8 +20,8 @@ public sealed class TenantCreatedEventHandler(
             new TenantCreatedIntegrationEvent(
                 notification.TenantId,
                 notification.Name,
-                string.Empty,
-                string.Empty,
+                notification.Slug,
+                notification.ContactEmail,
                 notification.Plan),
             ct).ConfigureAwait(false);
     }
@@ -75,7 +75,7 @@ public sealed class TenantPlanUpgradedEventHandler(
                 notification.TenantId,
                 notification.OldPlan,
                 notification.NewPlan,
-                NewMaxSeats: 0),
+                notification.NewMaxEmployees),
             ct).ConfigureAwait(false);
     }
 }

@@ -21,6 +21,7 @@ public sealed class EmployeeSeatConsumerTests : IAsyncDisposable
     {
         _provider = new ServiceCollection()
             .AddScoped(_ => _repo)
+            .AddScoped<HrSaas.TenantSdk.TenantContext>()
             .AddMassTransitTestHarness(cfg =>
             {
                 cfg.AddConsumer<EmployeeCreatedConsumer>();

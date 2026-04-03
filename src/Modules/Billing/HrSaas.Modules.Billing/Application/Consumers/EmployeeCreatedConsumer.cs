@@ -1,5 +1,6 @@
 using HrSaas.Contracts.Employee;
 using HrSaas.Modules.Billing.Application.Interfaces;
+using HrSaas.TenantSdk;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -7,11 +8,13 @@ namespace HrSaas.Modules.Billing.Application.Consumers;
 
 public sealed class EmployeeCreatedConsumer(
     ISubscriptionRepository subscriptionRepository,
+    TenantContext tenantContext,
     ILogger<EmployeeCreatedConsumer> logger) : IConsumer<EmployeeCreatedIntegrationEvent>
 {
     public async Task Consume(ConsumeContext<EmployeeCreatedIntegrationEvent> context)
     {
         var msg = context.Message;
+        tenantContext.TenantId = msg.TenantId;
 
         var subscription = await subscriptionRepository
             .GetActiveByTenantAsync(msg.TenantId, context.CancellationToken)

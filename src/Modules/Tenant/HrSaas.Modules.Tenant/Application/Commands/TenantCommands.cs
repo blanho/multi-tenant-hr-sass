@@ -40,6 +40,15 @@ public sealed class CreateTenantCommandHandler(ITenantRepository repo) : IReques
 
 public sealed record SuspendTenantCommand(Guid TenantId, string Reason) : ICommand;
 
+public sealed class SuspendTenantCommandValidator : AbstractValidator<SuspendTenantCommand>
+{
+    public SuspendTenantCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(500);
+    }
+}
+
 public sealed class SuspendTenantCommandHandler(ITenantRepository repo) : IRequestHandler<SuspendTenantCommand, Result>
 {
     public async Task<Result> Handle(SuspendTenantCommand request, CancellationToken cancellationToken)
@@ -58,6 +67,15 @@ public sealed class SuspendTenantCommandHandler(ITenantRepository repo) : IReque
 }
 
 public sealed record UpgradePlanCommand(Guid TenantId, PlanType NewPlan) : ICommand;
+
+public sealed class UpgradePlanCommandValidator : AbstractValidator<UpgradePlanCommand>
+{
+    public UpgradePlanCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.NewPlan).IsInEnum();
+    }
+}
 
 public sealed class UpgradePlanCommandHandler(ITenantRepository repo) : IRequestHandler<UpgradePlanCommand, Result>
 {

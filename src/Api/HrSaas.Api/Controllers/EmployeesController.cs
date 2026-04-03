@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Modules.Employee.Application.Commands;
 using HrSaas.Modules.Employee.Application.DTOs;
@@ -8,17 +9,21 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HrSaas.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
 [Authorize]
+[EnableRateLimiting("api")]
 public sealed class EmployeesController(
     IMediator mediator,
     ITenantService tenantService) : ControllerBase
 {
     [HttpGet("{id:guid}")]
+    [HasPermission(Permission.Employees.View)]
     [ProducesResponseType<EmployeeDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -28,6 +33,7 @@ public sealed class EmployeesController(
     }
 
     [HttpGet]
+    [HasPermission(Permission.Employees.View)]
     [ProducesResponseType<PagedResult<EmployeeSummaryDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,

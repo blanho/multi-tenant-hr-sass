@@ -22,6 +22,7 @@ public sealed class TenantSuspendedConsumerTests : IAsyncDisposable
     {
         _provider = new ServiceCollection()
             .AddScoped(_ => _repo)
+            .AddScoped<HrSaas.TenantSdk.TenantContext>()
             .AddMassTransitTestHarness(cfg =>
             {
                 cfg.AddConsumer<TenantSuspendedConsumer>();

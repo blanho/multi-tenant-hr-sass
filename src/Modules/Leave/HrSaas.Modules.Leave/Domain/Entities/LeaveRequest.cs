@@ -44,7 +44,7 @@ public sealed class LeaveRequest : BaseEntity
             Reason = reason
         };
 
-        request.AddDomainEvent(new LeaveAppliedEvent(tenantId, request.Id, employeeId, type.ToString()));
+        request.AddDomainEvent(new LeaveAppliedEvent(tenantId, request.Id, employeeId, type.ToString(), start, end, reason));
         return request;
     }
 
@@ -61,7 +61,7 @@ public sealed class LeaveRequest : BaseEntity
         ApprovedByUserId = approvedByUserId;
         DecisionAt = DateTime.UtcNow;
         Touch();
-        AddDomainEvent(new LeaveApprovedEvent(TenantId, Id, EmployeeId, approvedByUserId));
+        AddDomainEvent(new LeaveApprovedEvent(TenantId, Id, EmployeeId, approvedByUserId, Type.ToString(), GetDurationDays()));
     }
 
     public void Reject(Guid rejectedByUserId, string note)

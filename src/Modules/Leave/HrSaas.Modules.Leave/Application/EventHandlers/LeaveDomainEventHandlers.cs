@@ -23,10 +23,10 @@ public sealed class LeaveAppliedEventHandler(
                 notification.LeaveRequestId,
                 notification.EmployeeId,
                 notification.LeaveType,
-                StartDate: DateTime.UtcNow,
-                EndDate: DateTime.UtcNow,
-                DurationDays: 0,
-                Reason: string.Empty),
+                notification.StartDate,
+                notification.EndDate,
+                (int)(notification.EndDate - notification.StartDate).TotalDays + 1,
+                notification.Reason),
             ct).ConfigureAwait(false);
     }
 }
@@ -48,8 +48,8 @@ public sealed class LeaveApprovedEventHandler(
                 notification.LeaveRequestId,
                 notification.EmployeeId,
                 notification.ApprovedBy,
-                LeaveType: string.Empty,
-                DurationDays: 0),
+                notification.LeaveType,
+                notification.DurationDays),
             ct).ConfigureAwait(false);
     }
 }
