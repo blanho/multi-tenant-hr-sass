@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SharedKernel\HrSaas.SharedKernel\HrSaas.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\TenantSdk\HrSaas.TenantSdk\HrSaas.TenantSdk.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\EventBus\HrSaas.EventBus\HrSaas.EventBus.csproj" />
+  </ItemGroup>
+</Project>

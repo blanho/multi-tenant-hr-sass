@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <ProjectReference Include="..\..\src\Modules\Employee\HrSaas.Modules.Employee\HrSaas.Modules.Employee.csproj" />
+    <ProjectReference Include="..\..\src\Api\HrSaas.Api\HrSaas.Api.csproj" />
+  </ItemGroup>
+</Project>
