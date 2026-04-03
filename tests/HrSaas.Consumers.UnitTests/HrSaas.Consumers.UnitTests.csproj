@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\Billing\HrSaas.Modules.Billing\HrSaas.Modules.Billing.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\HrSaas.Modules.Identity\HrSaas.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tenant\HrSaas.Modules.Tenant\HrSaas.Modules.Tenant.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Leave\HrSaas.Modules.Leave\HrSaas.Modules.Leave.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\HrSaas.Modules.Notifications\HrSaas.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\Contracts\HrSaas.Contracts\HrSaas.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
