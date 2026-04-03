@@ -51,7 +51,7 @@ public sealed class Tenant : BaseEntity
     public void Activate()
     {
         Status = TenantStatus.Active;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     public void Upgrade(PlanType newPlan)
@@ -64,22 +64,29 @@ public sealed class Tenant : BaseEntity
         var oldPlan = Plan;
         Plan = newPlan;
         MaxEmployees = PlanLimits[newPlan];
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         AddDomainEvent(new TenantPlanUpgradedEvent(TenantId, oldPlan.ToString(), newPlan.ToString()));
     }
 
     public void Suspend(string reason)
     {
+        Guard.NotNullOrWhiteSpace(reason, nameof(reason));
         Status = TenantStatus.Suspended;
         SuspendedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         AddDomainEvent(new TenantSuspendedEvent(TenantId, reason));
     }
 
     public void Reinstate()
     {
+        if (Status != TenantStatus.Suspended)
+        {
+            throw new InvalidOperationException("Only suspended tenants can be reinstated.");
+        }
+
         Status = TenantStatus.Active;
         SuspendedAt = null;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
+        AddDomainEvent(new TenantReinstatedEvent(TenantId));
     }
 }

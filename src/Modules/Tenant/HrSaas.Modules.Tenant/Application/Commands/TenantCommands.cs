@@ -74,3 +74,38 @@ public sealed class UpgradePlanCommandHandler(ITenantRepository repo) : IRequest
         return Result.Success();
     }
 }
+
+public sealed record ReinstateCommand(Guid TenantId) : ICommand;
+
+public sealed class ReinstateCommandValidator : AbstractValidator<ReinstateCommand>
+{
+    public ReinstateCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+    }
+}
+
+public sealed class ReinstateCommandHandler(ITenantRepository repo) : IRequestHandler<ReinstateCommand, Result>
+{
+    public async Task<Result> Handle(ReinstateCommand request, CancellationToken cancellationToken)
+    {
+        var tenant = await repo.GetByIdAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return Result.Failure("Tenant not found.", "NOT_FOUND");
+        }
+
+        try
+        {
+            tenant.Reinstate();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Result.Failure(ex.Message, "INVALID_STATE");
+        }
+
+        repo.Update(tenant);
+        await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
+    }
+}

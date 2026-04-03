@@ -54,6 +54,37 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new SuspendTenantCommand(tenantId, request.Reason), ct);
         return result.IsSuccess ? NoContent() : NotFound(result.Error);
     }
+
+    [HttpPost("{tenantId:guid}/reinstate")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Reinstate(Guid tenantId, CancellationToken ct)
+    {
+        var result = await mediator.Send(new ReinstateCommand(tenantId), ct);
+        if (!result.IsSuccess)
+        {
+            return result.ErrorCode == "NOT_FOUND" ? NotFound(result.Error) : BadRequest(result.Error);
+        }
+
+        return NoContent();
+    }
+
+    [HttpPost("{tenantId:guid}/upgrade-plan")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpgradePlan(Guid tenantId, [FromBody] UpgradePlanRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new UpgradePlanCommand(tenantId, request.NewPlan), ct);
+        if (!result.IsSuccess)
+        {
+            return result.ErrorCode == "NOT_FOUND" ? NotFound(result.Error) : BadRequest(result.Error);
+        }
+
+        return NoContent();
+    }
 }
 
 public sealed record SuspendRequest(string Reason);
+public sealed record UpgradePlanRequest(HrSaas.Modules.Tenant.Domain.Entities.PlanType NewPlan);

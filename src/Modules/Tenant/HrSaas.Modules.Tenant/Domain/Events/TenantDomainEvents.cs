@@ -16,3 +16,8 @@ public sealed record TenantSuspendedEvent(Guid TenantId, string Reason) : IDomai
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
+
+public sealed record TenantReinstatedEvent(Guid TenantId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}
