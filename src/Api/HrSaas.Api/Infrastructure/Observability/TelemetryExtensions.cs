@@ -1,3 +1,4 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -10,19 +11,38 @@ public static class TelemetryExtensions
     {
         var serviceName = configuration["Telemetry:ServiceName"] ?? "HrSaas.Api";
         var otlpEndpoint = configuration["Telemetry:OtlpEndpoint"] ?? "http://localhost:4317";
+        var appInsightsConnectionString = configuration["Azure:ApplicationInsights:ConnectionString"];
 
-        services.AddOpenTelemetry()
-            .ConfigureResource(r => r.AddService(serviceName))
-            .WithTracing(tracing => tracing
-                .AddAspNetCoreInstrumentation(opts => opts.RecordException = true)
-                .AddHttpClientInstrumentation()
-                .AddEntityFrameworkCoreInstrumentation()
-                .AddSource(HrSaasActivitySource.SourceName)
-                .AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint)))
-            .WithMetrics(metrics => metrics
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint)));
+        var otelBuilder = services.AddOpenTelemetry()
+            .ConfigureResource(r => r.AddService(serviceName));
+
+        if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+        {
+            otelBuilder.UseAzureMonitor(opts =>
+                opts.ConnectionString = appInsightsConnectionString);
+        }
+
+        otelBuilder
+            .WithTracing(tracing =>
+            {
+                tracing
+                    .AddAspNetCoreInstrumentation(opts => opts.RecordException = true)
+                    .AddHttpClientInstrumentation()
+                    .AddEntityFrameworkCoreInstrumentation()
+                    .AddSource(HrSaasActivitySource.SourceName);
+
+                if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+                    tracing.AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint));
+            })
+            .WithMetrics(metrics =>
+            {
+                metrics
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation();
+
+                if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+                    metrics.AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint));
+            });
 
         return services;
     }

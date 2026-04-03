@@ -89,6 +89,10 @@ services:
       Telemetry__OtlpEndpoint: http://otel-collector:4317
       Serilog__WriteTo__1__Name: Seq
       Serilog__WriteTo__1__Args__serverUrl: http://seq:5341
+      Azure__KeyVault__VaultUri: ${AZURE_KEYVAULT_VAULT_URI:-}
+      Azure__BlobStorage__ConnectionString: ${AZURE_BLOB_CONNECTION_STRING:-}
+      Azure__ApplicationInsights__ConnectionString: ${AZURE_APPINSIGHTS_CONNECTION_STRING:-}
+      ConnectionStrings__AzureServiceBus: ${AZURE_SERVICEBUS_CONNECTION_STRING:-}
     depends_on:
       postgres:
         condition: service_healthy

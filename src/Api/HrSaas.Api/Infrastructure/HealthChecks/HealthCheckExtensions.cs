@@ -1,3 +1,4 @@
+using Azure.Identity;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -12,10 +13,52 @@ public static class HealthCheckExtensions
         var rabbitMq = configuration.GetConnectionString("RabbitMQ")!;
         var redis = configuration.GetConnectionString("Redis")!;
 
-        services.AddHealthChecks()
+        var builder = services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql", tags: ["db", "readiness"])
-            .AddRabbitMQ(rabbitMq, name: "rabbitmq", tags: ["messaging", "readiness"])
             .AddRedis(redis, name: "redis", tags: ["cache", "readiness"]);
+
+        var azureServiceBus = configuration.GetConnectionString("AzureServiceBus");
+        if (!string.IsNullOrWhiteSpace(azureServiceBus))
+        {
+            builder.AddAzureServiceBusTopic(
+                azureServiceBus,
+                topicName: "hr-saas-health",
+                name: "azure-servicebus",
+                tags: ["messaging", "readiness", "azure"]);
+        }
+        else
+        {
+            builder.AddRabbitMQ(rabbitMq, name: "rabbitmq", tags: ["messaging", "readiness"]);
+        }
+
+        var blobConnectionString = configuration["Azure:BlobStorage:ConnectionString"];
+        var blobServiceUri = configuration["Azure:BlobStorage:ServiceUri"];
+        if (!string.IsNullOrWhiteSpace(blobConnectionString))
+        {
+            builder.AddAzureBlobStorage(
+                sp => new global::Azure.Storage.Blobs.BlobServiceClient(blobConnectionString),
+                name: "azure-blob",
+                tags: ["storage", "readiness", "azure"]);
+        }
+        else if (!string.IsNullOrWhiteSpace(blobServiceUri))
+        {
+            builder.AddAzureBlobStorage(
+                sp => new global::Azure.Storage.Blobs.BlobServiceClient(
+                    new Uri(blobServiceUri), new DefaultAzureCredential()),
+                name: "azure-blob",
+                tags: ["storage", "readiness", "azure"]);
+        }
+
+        var keyVaultUri = configuration["Azure:KeyVault:VaultUri"];
+        if (!string.IsNullOrWhiteSpace(keyVaultUri))
+        {
+            builder.AddAzureKeyVault(
+                new Uri(keyVaultUri),
+                new DefaultAzureCredential(),
+                setup => { },
+                name: "azure-keyvault",
+                tags: ["secrets", "readiness", "azure"]);
+        }
 
         return services;
     }

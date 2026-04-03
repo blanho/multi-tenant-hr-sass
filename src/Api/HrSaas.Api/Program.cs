@@ -1,4 +1,5 @@
 using HrSaas.Api.Infrastructure.Authorization;
+using HrSaas.Api.Infrastructure.Azure;
 using HrSaas.Api.Infrastructure.HealthChecks;
 using HrSaas.Api.Infrastructure.Idempotency;
 using HrSaas.Api.Infrastructure.Observability;
@@ -13,6 +14,7 @@ using HrSaas.Modules.Notifications;
 using HrSaas.Modules.Tenant;
 using HrSaas.SharedKernel.Behaviors;
 using HrSaas.SharedKernel.Interceptors;
+using HrSaas.SharedKernel.Storage;
 using HrSaas.TenantSdk;
 using MassTransit;
 using MediatR;
@@ -25,6 +27,8 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+
+    builder.AddAzureKeyVault();
 
     builder.Host.UseSerilog((ctx, lc) => lc
         .ReadFrom.Configuration(ctx.Configuration)
@@ -69,6 +73,11 @@ try
     builder.Services.AddStackExchangeRedisCache(opts =>
         opts.Configuration = builder.Configuration.GetConnectionString("Redis"));
 
+    builder.Services.AddAzureBlobStorage(builder.Configuration);
+
+    var useAzureServiceBus = !string.IsNullOrWhiteSpace(
+        builder.Configuration.GetConnectionString("AzureServiceBus"));
+
     builder.Services.AddMassTransit(x =>
     {
         x.AddConsumers(
@@ -79,11 +88,22 @@ try
             typeof(TenantModule).Assembly,
             typeof(NotificationsModule).Assembly);
 
-        x.UsingRabbitMq((ctx, cfg) =>
+        if (useAzureServiceBus)
         {
-            cfg.Host(builder.Configuration.GetConnectionString("RabbitMQ"));
-            cfg.ApplyHrSaasTopology(ctx);
-        });
+            x.UsingAzureServiceBus((ctx, cfg) =>
+            {
+                cfg.Host(builder.Configuration.GetConnectionString("AzureServiceBus"));
+                cfg.ApplyHrSaasTopology(ctx);
+            });
+        }
+        else
+        {
+            x.UsingRabbitMq((ctx, cfg) =>
+            {
+                cfg.Host(builder.Configuration.GetConnectionString("RabbitMQ"));
+                cfg.ApplyHrSaasTopology(ctx);
+            });
+        }
     });
 
     builder.Services.AddApiVersioningSetup();
