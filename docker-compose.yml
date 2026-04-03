@@ -1,0 +1,117 @@
+services:
+
+  # ─── Main API ──────────────────────────────────────────────────────────────
+  hrsaas-api:
+    build:
+      context: .
+      dockerfile: src/Api/HrSaas.Api/Dockerfile
+    container_name: hrsaas-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Default=Host=postgres;Port=5432;Database=hrsaas;Username=hrsaas;Password=hrsaas_secret
+      - Jwt__SecretKey=DEVELOPMENT_ONLY_KEY_REPLACE_IN_PROD_32chars!
+      - Jwt__Issuer=HrSaas
+      - Jwt__Audience=HrSaas-API
+      - RabbitMq__Host=amqp://rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hrsaas-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ─── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hrsaas-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: hrsaas
+      POSTGRES_USER: hrsaas
+      POSTGRES_PASSWORD: hrsaas_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hrsaas-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrsaas -d hrsaas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── RabbitMQ ──────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: hrsaas-rabbitmq
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI (http://localhost:15672, guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - hrsaas-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ─── Redis (cache + rate limiting) ─────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: hrsaas-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - hrsaas-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ─── Seq (structured logging UI) ───────────────────────────────────────────
+  seq:
+    image: datalust/seq:2024.3
+    container_name: hrsaas-seq
+    ports:
+      - "5341:5341"   # Ingestion
+      - "8090:80"     # UI (http://localhost:8090)
+    environment:
+      ACCEPT_EULA: "Y"
+    volumes:
+      - seq_data:/data
+    networks:
+      - hrsaas-net
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
+  seq_data:
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  hrsaas-net:
+    driver: bridge

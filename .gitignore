@@ -1,0 +1,73 @@
+# ── Copilot / AI docs (not for version control) ────────────────────────────
+.github/copilot-instructions.md
+docs/
+
+# ── .NET build outputs ───────────────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+# ── NuGet ────────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+nuget.config
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ── .NET runtime ─────────────────────────────────────────────────────────────
+*.pidb
+*.svd
+*.userprefs
+
+# ── Rider / JetBrains ────────────────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# ── Secrets & environment ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+**/secrets.json
+**/usersecrets/
+
+# ── Test results ─────────────────────────────────────────────────────────────
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+*.coverage
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+.docker/
+docker-compose.override.yml
+
+# ── EF Core migrations (optional — remove if you want to track migrations) ──
+# **/Migrations/
+
+# ── Python scripts output ────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
