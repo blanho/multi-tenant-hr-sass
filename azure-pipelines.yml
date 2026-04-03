@@ -1,0 +1,326 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  dotnetVersion: '9.0.x'
+  buildConfiguration: 'Release'
+  vmImage: 'ubuntu-latest'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+stages:
+  - stage: Build
+    displayName: Build & Test
+    jobs:
+      - job: BuildAndTest
+        displayName: Build, Test & Publish
+        pool:
+          vmImage: $(vmImage)
+        services:
+          postgres:
+            image: postgres:16-alpine
+            ports:
+              - 5432:5432
+            env:
+              POSTGRES_USER: test
+              POSTGRES_PASSWORD: test
+              POSTGRES_DB: hrsaas_test
+        steps:
+          - task: UseDotNet@2
+            displayName: Setup .NET $(dotnetVersion)
+            inputs:
+              packageType: sdk
+              version: $(dotnetVersion)
+
+          - task: DotNetCoreCLI@2
+            displayName: Restore
+            inputs:
+              command: restore
+              projects: 'HrSaas.sln'
+
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              projects: 'HrSaas.sln'
+              arguments: '--no-restore --configuration $(buildConfiguration)'
+
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: test
+              projects: 'HrSaas.sln'
+              arguments: '--no-build --configuration $(buildConfiguration) --collect "XPlat Code Coverage"'
+              publishTestResults: true
+
+          - task: PublishCodeCoverageResults@2
+            displayName: Publish Code Coverage
+            inputs:
+              summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish API
+            inputs:
+              command: publish
+              projects: 'src/Api/HrSaas.Api/HrSaas.Api.csproj'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/api'
+              zipAfterPublish: true
+
+          - publish: $(Build.ArtifactStagingDirectory)/api
+            displayName: Upload API Artifact
+            artifact: hrsaas-api
+
+          - publish: infra
+            displayName: Upload Infra Artifact
+            artifact: infra
+
+      - job: FormatCheck
+        displayName: Format Check
+        pool:
+          vmImage: $(vmImage)
+        steps:
+          - task: UseDotNet@2
+            displayName: Setup .NET
+            inputs:
+              packageType: sdk
+              version: $(dotnetVersion)
+
+          - task: DotNetCoreCLI@2
+            displayName: Format Verify
+            inputs:
+              command: custom
+              custom: format
+              arguments: 'HrSaas.sln --verify-no-changes --severity warn'
+
+  - stage: DeployDev
+    displayName: Deploy to Dev
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    variables:
+      - group: hrsaas-dev
+      - name: environmentName
+        value: dev
+      - name: azureResourceGroup
+        value: rg-hrsaas-dev
+    jobs:
+      - deployment: DeployInfra
+        displayName: Deploy Infrastructure
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Deploy Bicep
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az deployment group create \
+                        --resource-group $(azureResourceGroup) \
+                        --template-file $(Pipeline.Workspace)/infra/main.bicep \
+                        --parameters environmentName=$(environmentName) \
+                                     postgresPassword=$(postgresPassword) \
+                                     jwtSecretKey=$(jwtSecretKey) \
+                        --output json > deployment-output.json
+
+                      echo "##vso[task.setvariable variable=appServiceName;isOutput=true]$(jq -r '.properties.outputs.appServiceName.value' deployment-output.json)"
+                    name: bicepDeploy
+
+      - deployment: DeployApp
+        displayName: Deploy Application
+        dependsOn: DeployInfra
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-dev
+        variables:
+          appServiceName: $[ dependencies.DeployInfra.outputs['DeployInfra.bicepDeploy.appServiceName'] ]
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Deploy to App Service
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    appType: webAppLinux
+                    appName: $(appServiceName)
+                    package: '$(Pipeline.Workspace)/hrsaas-api/*.zip'
+
+                - bash: |
+                    APP_URL="https://$(appServiceName).azurewebsites.net"
+                    echo "Waiting for deployment to settle..."
+                    sleep 30
+                    for i in {1..5}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/health/live" || true)
+                      if [ "$STATUS" = "200" ]; then
+                        echo "Health check passed"
+                        exit 0
+                      fi
+                      echo "Attempt $i: status=$STATUS, retrying in 15s..."
+                      sleep 15
+                    done
+                    echo "Health check failed after 5 attempts"
+                    exit 1
+                  displayName: Health Check
+
+  - stage: DeployStaging
+    displayName: Deploy to Staging
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: hrsaas-staging
+      - name: environmentName
+        value: staging
+      - name: azureResourceGroup
+        value: rg-hrsaas-staging
+    jobs:
+      - deployment: DeployInfra
+        displayName: Deploy Infrastructure
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-staging
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Deploy Bicep
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az deployment group create \
+                        --resource-group $(azureResourceGroup) \
+                        --template-file $(Pipeline.Workspace)/infra/main.bicep \
+                        --parameters environmentName=$(environmentName) \
+                                     postgresPassword=$(postgresPassword) \
+                                     jwtSecretKey=$(jwtSecretKey) \
+                        --output json > deployment-output.json
+
+                      echo "##vso[task.setvariable variable=appServiceName;isOutput=true]$(jq -r '.properties.outputs.appServiceName.value' deployment-output.json)"
+                    name: bicepDeploy
+
+      - deployment: DeployApp
+        displayName: Deploy Application
+        dependsOn: DeployInfra
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-staging
+        variables:
+          appServiceName: $[ dependencies.DeployInfra.outputs['DeployInfra.bicepDeploy.appServiceName'] ]
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Deploy to App Service
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    appType: webAppLinux
+                    appName: $(appServiceName)
+                    package: '$(Pipeline.Workspace)/hrsaas-api/*.zip'
+
+                - bash: |
+                    APP_URL="https://$(appServiceName).azurewebsites.net"
+                    echo "Waiting for deployment to settle..."
+                    sleep 30
+                    for i in {1..5}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/health/live" || true)
+                      if [ "$STATUS" = "200" ]; then
+                        echo "Health check passed"
+                        exit 0
+                      fi
+                      echo "Attempt $i: status=$STATUS, retrying in 15s..."
+                      sleep 15
+                    done
+                    echo "Health check failed after 5 attempts"
+                    exit 1
+                  displayName: Health Check
+
+  - stage: DeployProd
+    displayName: Deploy to Production
+    dependsOn: DeployStaging
+    condition: succeeded()
+    variables:
+      - group: hrsaas-prod
+      - name: environmentName
+        value: prod
+      - name: azureResourceGroup
+        value: rg-hrsaas-prod
+    jobs:
+      - deployment: DeployInfra
+        displayName: Deploy Infrastructure
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Deploy Bicep
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az deployment group create \
+                        --resource-group $(azureResourceGroup) \
+                        --template-file $(Pipeline.Workspace)/infra/main.bicep \
+                        --parameters environmentName=$(environmentName) \
+                                     postgresPassword=$(postgresPassword) \
+                                     jwtSecretKey=$(jwtSecretKey) \
+                        --output json > deployment-output.json
+
+                      echo "##vso[task.setvariable variable=appServiceName;isOutput=true]$(jq -r '.properties.outputs.appServiceName.value' deployment-output.json)"
+                    name: bicepDeploy
+
+      - deployment: DeployApp
+        displayName: Deploy Application
+        dependsOn: DeployInfra
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-prod
+        variables:
+          appServiceName: $[ dependencies.DeployInfra.outputs['DeployInfra.bicepDeploy.appServiceName'] ]
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Deploy to App Service
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    appType: webAppLinux
+                    appName: $(appServiceName)
+                    package: '$(Pipeline.Workspace)/hrsaas-api/*.zip'
+
+                - bash: |
+                    APP_URL="https://$(appServiceName).azurewebsites.net"
+                    echo "Waiting for deployment to settle..."
+                    sleep 30
+                    for i in {1..5}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/health/live" || true)
+                      if [ "$STATUS" = "200" ]; then
+                        echo "Health check passed"
+                        exit 0
+                      fi
+                      echo "Attempt $i: status=$STATUS, retrying in 15s..."
+                      sleep 15
+                    done
+                    echo "Health check failed after 5 attempts"
+                    exit 1
+                  displayName: Health Check
