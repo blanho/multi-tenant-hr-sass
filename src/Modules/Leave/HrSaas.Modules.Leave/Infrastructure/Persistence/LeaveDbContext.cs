@@ -12,12 +12,14 @@ public sealed class LeaveDbContext(
     : DbContext(options)
 {
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("leave");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(LeaveDbContext).Assembly);
         modelBuilder.Entity<LeaveRequest>().HasQueryFilter(l => l.TenantId == tenantContext.TenantId && !l.IsDeleted);
+        modelBuilder.Entity<LeaveBalance>().HasQueryFilter(b => b.TenantId == tenantContext.TenantId);
         base.OnModelCreating(modelBuilder);
     }
 

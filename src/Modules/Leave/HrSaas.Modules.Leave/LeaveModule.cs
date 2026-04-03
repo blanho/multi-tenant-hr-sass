@@ -1,7 +1,9 @@
 using FluentValidation;
 using HrSaas.Modules.Leave.Application.Interfaces;
+using HrSaas.Modules.Leave.Application.Policies;
 using HrSaas.Modules.Leave.Infrastructure.Persistence;
 using HrSaas.Modules.Leave.Infrastructure.Persistence.Repositories;
+using HrSaas.Modules.Leave.Infrastructure.Policies;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -17,6 +19,8 @@ public static class LeaveModule
             opts.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<ILeaveRepository, LeaveRepository>();
+        services.AddScoped<ILeaveBalanceRepository, LeaveBalanceRepository>();
+        services.AddScoped<ILeaveBalancePolicy, DefaultLeaveBalancePolicy>();
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LeaveModule).Assembly));
         services.AddValidatorsFromAssembly(typeof(LeaveModule).Assembly);
 
