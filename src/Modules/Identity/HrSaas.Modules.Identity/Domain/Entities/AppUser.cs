@@ -12,6 +12,7 @@ public sealed class AppUser : BaseEntity
     public Email Email { get; private set; } = null!;
     public HashedPassword Password { get; private set; } = null!;
     public string Role { get; private set; } = null!;
+    public bool IsActive { get; private set; } = true;
 
     private AppUser() { }
 
@@ -39,20 +40,20 @@ public sealed class AppUser : BaseEntity
         Guard.NotNullOrWhiteSpace(newRole, nameof(newRole));
         var old = Role;
         Role = newRole;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         AddDomainEvent(new UserRoleChangedEvent(TenantId, Id, old, newRole));
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         AddDomainEvent(new UserDeactivatedEvent(TenantId, Id));
     }
 
     public void Activate()
     {
         IsActive = true;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 }

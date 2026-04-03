@@ -1,3 +1,4 @@
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -46,5 +47,5 @@ public static class HealthCheckExtensions
     }
 
     private static readonly Func<HttpContext, HealthReport, Task> HealthCheckUiResponseWriter =
-        HealthChecks.UI.Client.UIResponseWriter.WriteHealthCheckUIResponse;
+        UIResponseWriter.WriteHealthCheckUIResponse;
 }

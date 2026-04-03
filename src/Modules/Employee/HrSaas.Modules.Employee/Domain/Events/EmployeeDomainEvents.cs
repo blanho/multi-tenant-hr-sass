@@ -2,7 +2,7 @@ using HrSaas.SharedKernel.Events;
 
 namespace HrSaas.Modules.Employee.Domain.Events;
 
-public record EmployeeCreatedEvent(
+public sealed record EmployeeCreatedEvent(
     Guid TenantId,
     Guid EmployeeId,
     string Name,
@@ -12,15 +12,24 @@ public record EmployeeCreatedEvent(
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
-public record EmployeeUpdatedEvent(
+public sealed record EmployeeUpdatedEvent(
     Guid TenantId,
     Guid EmployeeId,
-    string Name) : IDomainEvent
+    string Name,
+    string Department,
+    string Position) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
-public record EmployeeDeletedEvent(
+public sealed record EmployeeDeactivatedEvent(
+    Guid TenantId,
+    Guid EmployeeId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}
+
+public sealed record EmployeeDeletedEvent(
     Guid TenantId,
     Guid EmployeeId) : IDomainEvent
 {

@@ -1,13 +1,13 @@
-using HrSaas.Modules.Tenant.Domain.Entities;
+using TenantEntity = HrSaas.Modules.Tenant.Domain.Entities.Tenant;
 
 namespace HrSaas.Modules.Tenant.Application.Interfaces;
 
 public interface ITenantRepository
 {
-    Task<Tenant?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<Tenant?> GetBySlugAsync(string slug, CancellationToken ct = default);
-    Task<IReadOnlyList<Tenant>> GetAllAsync(CancellationToken ct = default);
-    Task AddAsync(Tenant tenant, CancellationToken ct = default);
-    void Update(Tenant tenant);
+    Task<TenantEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<TenantEntity?> GetBySlugAsync(string slug, CancellationToken ct = default);
+    Task<IReadOnlyList<TenantEntity>> GetAllAsync(CancellationToken ct = default);
+    Task AddAsync(TenantEntity tenant, CancellationToken ct = default);
+    void Update(TenantEntity tenant);
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

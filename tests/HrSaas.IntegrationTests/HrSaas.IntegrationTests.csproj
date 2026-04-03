@@ -4,6 +4,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Modules\Employee\HrSaas.Modules.Employee\HrSaas.Modules.Employee.csproj" />
     <ProjectReference Include="..\..\src\Api\HrSaas.Api\HrSaas.Api.csproj" />
   </ItemGroup>

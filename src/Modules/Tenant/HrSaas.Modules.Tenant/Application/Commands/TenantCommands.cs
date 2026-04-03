@@ -4,6 +4,7 @@ using HrSaas.Modules.Tenant.Application.Interfaces;
 using HrSaas.Modules.Tenant.Domain.Entities;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
+using TenantEntity = HrSaas.Modules.Tenant.Domain.Entities.Tenant;
 
 namespace HrSaas.Modules.Tenant.Application.Commands;
 
@@ -29,7 +30,7 @@ public sealed class CreateTenantCommandHandler(ITenantRepository repo) : IReques
             return Result<Guid>.Failure("A tenant with this slug already exists.", "SLUG_TAKEN");
         }
 
-        var tenant = Tenant.Create(request.Name, request.Slug, request.ContactEmail, request.Plan);
+        var tenant = TenantEntity.Create(request.Name, request.Slug, request.ContactEmail, request.Plan);
         tenant.Activate();
         await repo.AddAsync(tenant, cancellationToken).ConfigureAwait(false);
         await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -30,6 +30,11 @@ public sealed class EmployeeRepository(EmployeeDbContext dbContext) : IEmployeeR
     public void Update(Domain.Entities.Employee employee)
         => dbContext.Employees.Update(employee);
 
+    public void Delete(Domain.Entities.Employee employee)
+    {
+        dbContext.Employees.Remove(employee);
+    }
+
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
         => dbContext.SaveChangesAsync(ct);
 }

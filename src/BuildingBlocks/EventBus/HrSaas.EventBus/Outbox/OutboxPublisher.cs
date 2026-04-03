@@ -6,7 +6,8 @@ namespace HrSaas.EventBus.Outbox;
 
 public sealed class OutboxPublisher(IOutboxStore store) : IEventBus
 {
-    public async Task PublishAsync<T>(T integrationEvent, CancellationToken ct = default) where T : IIntegrationEvent
+    public async Task PublishAsync<T>(T integrationEvent, CancellationToken ct = default)
+        where T : class, IIntegrationEvent
     {
         var message = new OutboxMessage
         {

@@ -4,7 +4,8 @@ namespace HrSaas.Api.Infrastructure.Resilience;
 
 public static class ResilienceExtensions
 {
-    public static IHttpClientBuilder AddStandardResilience(this IHttpClientBuilder builder) =>
+    public static IHttpClientBuilder AddStandardResilience(this IHttpClientBuilder builder)
+    {
         builder.AddStandardResilienceHandler(opts =>
         {
             opts.Retry.MaxRetryAttempts = 3;
@@ -14,4 +15,6 @@ public static class ResilienceExtensions
             opts.CircuitBreaker.MinimumThroughput = 10;
             opts.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
         });
+        return builder;
+    }
 }

@@ -1,7 +1,7 @@
-using HrSaas.SharedKernel.Entities;
-using HrSaas.SharedKernel.Exceptions;
 using HrSaas.Modules.Employee.Domain.Events;
 using HrSaas.Modules.Employee.Domain.ValueObjects;
+using HrSaas.SharedKernel.Entities;
+using HrSaas.SharedKernel.Guards;
 
 namespace HrSaas.Modules.Employee.Domain.Entities;
 
@@ -15,6 +15,8 @@ public sealed class Employee : BaseEntity
 
     public string Email { get; private set; } = default!;
 
+    public bool IsActive { get; private set; } = true;
+
     public Guid? UserId { get; private set; }
 
     private Employee() { }
@@ -27,16 +29,16 @@ public sealed class Employee : BaseEntity
         string email,
         Guid? userId = null)
     {
-        if (tenantId == Guid.Empty)
-            throw new DomainException("TenantId is required.");
+        Guard.NotEmpty(tenantId, nameof(tenantId));
 
         var employee = new Employee
         {
             TenantId = tenantId,
-            Name = ValidateName(name),
+            Name = Guard.MaxLength(Guard.NotNullOrWhiteSpace(name, nameof(name)).Trim(), 200, nameof(name)),
             Department = Department.Create(department),
             Position = Position.Create(position),
             Email = ValidateEmail(email),
+            IsActive = true,
             UserId = userId
         };
 
@@ -48,12 +50,35 @@ public sealed class Employee : BaseEntity
 
     public void Update(string name, string department, string position)
     {
-        Name = ValidateName(name);
+        Name = Guard.MaxLength(Guard.NotNullOrWhiteSpace(name, nameof(name)).Trim(), 200, nameof(name));
         Department = Department.Create(department);
         Position = Position.Create(position);
         Touch();
 
-        AddDomainEvent(new EmployeeUpdatedEvent(TenantId, Id, name));
+        AddDomainEvent(new EmployeeUpdatedEvent(TenantId, Id, name, department, position));
+    }
+
+    public void Deactivate()
+    {
+        if (!IsActive)
+        {
+            return;
+        }
+
+        IsActive = false;
+        Touch();
+        AddDomainEvent(new EmployeeDeactivatedEvent(TenantId, Id));
+    }
+
+    public void Activate()
+    {
+        if (IsActive)
+        {
+            return;
+        }
+
+        IsActive = true;
+        Touch();
     }
 
     public override void Delete()
@@ -64,29 +89,21 @@ public sealed class Employee : BaseEntity
 
     public void LinkToUser(Guid userId)
     {
-        if (userId == Guid.Empty)
-            throw new DomainException("UserId cannot be empty.");
-
+        Guard.NotEmpty(userId, nameof(userId));
         UserId = userId;
         Touch();
     }
 
-    private static string ValidateName(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Employee name is required.");
-
-        if (name.Length > 200)
-            throw new DomainException("Employee name cannot exceed 200 characters.");
-
-        return name.Trim();
-    }
-
     private static string ValidateEmail(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new DomainException("Employee email is required.");
+        Guard.NotNullOrWhiteSpace(email, nameof(email));
+        var trimmed = email.Trim().ToLowerInvariant();
+        if (!trimmed.Contains('@') || trimmed.IndexOf('@') == 0 || trimmed.LastIndexOf('.') < trimmed.IndexOf('@'))
+        {
+            throw new ArgumentException("Email must be a valid email address.", nameof(email));
+        }
 
-        return email.Trim().ToLowerInvariant();
+        return trimmed;
     }
 }
+

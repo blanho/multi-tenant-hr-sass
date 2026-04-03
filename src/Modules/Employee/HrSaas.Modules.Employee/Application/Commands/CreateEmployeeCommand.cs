@@ -1,14 +1,14 @@
 using FluentValidation;
 using HrSaas.Modules.Employee.Application.DTOs;
 using HrSaas.Modules.Employee.Application.Interfaces;
-using HrSaas.Modules.Employee.Domain.Entities;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
+using EmployeeEntity = HrSaas.Modules.Employee.Domain.Entities.Employee;
 
 namespace HrSaas.Modules.Employee.Application.Commands;
 
 
-public record CreateEmployeeCommand(
+public sealed record CreateEmployeeCommand(
     Guid TenantId,
     string Name,
     string Department,
@@ -49,15 +49,15 @@ public sealed class CreateEmployeeCommandHandler(IEmployeeRepository repository)
         CreateEmployeeCommand command,
         CancellationToken cancellationToken)
     {
-        var employee = Entities.Employee.Create(
+        var employee = EmployeeEntity.Create(
             command.TenantId,
             command.Name,
             command.Department,
             command.Position,
             command.Email);
 
-        await repository.AddAsync(employee, cancellationToken);
-        await repository.SaveChangesAsync(cancellationToken);
+        await repository.AddAsync(employee, cancellationToken).ConfigureAwait(false);
+        await repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<Guid>.Success(employee.Id);
     }

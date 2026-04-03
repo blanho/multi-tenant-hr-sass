@@ -1,11 +1,11 @@
-using HrSaas.Modules.Tenant.Domain.Entities;
+using TenantEntity = HrSaas.Modules.Tenant.Domain.Entities.Tenant;
 using Microsoft.EntityFrameworkCore;
 
 namespace HrSaas.Modules.Tenant.Infrastructure.Persistence;
 
 public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options) : DbContext(options)
 {
-    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<TenantEntity> Tenants => Set<TenantEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

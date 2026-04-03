@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Modules\Employee\HrSaas.Modules.Employee\HrSaas.Modules.Employee.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Employee\HrSaas.Modules.Employee\HrSaas.Modules.Employee.csproj" />
   </ItemGroup>
 </Project>

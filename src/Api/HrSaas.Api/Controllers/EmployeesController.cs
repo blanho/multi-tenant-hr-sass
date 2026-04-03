@@ -68,7 +68,12 @@ public sealed class EmployeesController(
         [FromBody] UpdateEmployeeRequest request,
         CancellationToken ct)
     {
-        var command = new UpdateEmployeeCommand(id, request.Name, request.Department, request.Position);
+        var command = new UpdateEmployeeCommand(
+            tenantService.GetCurrentTenantId(),
+            id,
+            request.Name,
+            request.Department,
+            request.Position);
         var result = await mediator.Send(command, ct);
 
         return result.IsSuccess ? NoContent() : NotFound(new { error = result.Error });
@@ -80,7 +85,9 @@ public sealed class EmployeesController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var command = new DeleteEmployeeCommand(id);
+        var command = new DeleteEmployeeCommand(
+            tenantService.GetCurrentTenantId(),
+            id);
         var result = await mediator.Send(command, ct);
 
         return result.IsSuccess ? NoContent() : NotFound(new { error = result.Error });

@@ -1,3 +1,5 @@
+using HrSaas.SharedKernel.Events;
+
 namespace HrSaas.SharedKernel.Entities;
 
 public abstract class BaseEntity
@@ -23,8 +25,9 @@ public abstract class BaseEntity
     public virtual void Delete()
     {
         IsDeleted = true;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
-    protected void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.UtcNow;
 }
+

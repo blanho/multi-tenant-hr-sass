@@ -22,7 +22,6 @@ public static class TelemetryExtensions
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
-                .AddRuntimeInstrumentation()
                 .AddOtlpExporter(opts => opts.Endpoint = new Uri(otlpEndpoint)));
 
         return services;

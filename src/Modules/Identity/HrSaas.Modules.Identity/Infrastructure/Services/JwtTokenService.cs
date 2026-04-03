@@ -1,4 +1,4 @@
-using HrSaas.Modules.Identity.Application.Commands;
+using HrSaas.Modules.Identity.Application.Interfaces;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -19,17 +19,17 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
 {
     private readonly JwtOptions _opts = options.Value;
 
-    public AuthTokenDto GenerateToken(Domain.Entities.AppUser user)
+    public string GenerateAccessToken(Guid userId, Guid tenantId, string email, string role)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opts.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim("tenant_id", user.TenantId.ToString()),
-            new Claim(ClaimTypes.Role, user.Role),
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, email),
+            new Claim("tenant_id", tenantId.ToString()),
+            new Claim(ClaimTypes.Role, role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
@@ -40,13 +40,28 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             expires: DateTime.UtcNow.AddMinutes(_opts.ExpiryMinutes),
             signingCredentials: credentials);
 
-        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 
-        return new AuthTokenDto(
-            AccessToken: accessToken,
-            RefreshToken: Guid.NewGuid().ToString("N"),
-            ExpiresIn: _opts.ExpiryMinutes * 60,
-            Role: user.Role,
-            TenantId: user.TenantId);
+    public string GenerateRefreshToken() => Guid.NewGuid().ToString("N");
+
+    public (Guid UserId, Guid TenantId, string Role) ValidateRefreshToken(string token)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_opts.SecretKey);
+        var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero
+        }, out _);
+
+        var userId = Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+        var tenantId = Guid.Parse(principal.FindFirstValue("tenant_id")!);
+        var role = principal.FindFirstValue(ClaimTypes.Role)!;
+
+        return (userId, tenantId, role);
     }
 }

@@ -1,8 +1,8 @@
-using HrSaas.SharedKernel.Exceptions;
+using HrSaas.SharedKernel.Guards;
 
 namespace HrSaas.Modules.Employee.Domain.ValueObjects;
 
-public record Department
+public sealed record Department
 {
     public string Name { get; }
 
@@ -10,19 +10,15 @@ public record Department
 
     public static Department Create(string name)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Department name is required.");
-
-        if (name.Length > 100)
-            throw new DomainException("Department name cannot exceed 100 characters.");
-
+        Guard.NotNullOrWhiteSpace(name, nameof(name));
+        Guard.MaxLength(name.Trim(), 100, nameof(name));
         return new Department(name.Trim());
     }
 
     public override string ToString() => Name;
 }
 
-public record Position
+public sealed record Position
 {
     public string Title { get; }
 
@@ -30,12 +26,8 @@ public record Position
 
     public static Position Create(string title)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new DomainException("Position title is required.");
-
-        if (title.Length > 100)
-            throw new DomainException("Position title cannot exceed 100 characters.");
-
+        Guard.NotNullOrWhiteSpace(title, nameof(title));
+        Guard.MaxLength(title.Trim(), 100, nameof(title));
         return new Position(title.Trim());
     }
 

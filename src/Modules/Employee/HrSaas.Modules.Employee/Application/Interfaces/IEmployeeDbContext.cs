@@ -1,7 +1,6 @@
-using HrSaas.Modules.Employee.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace HrSaas.Modules.Employee.Infrastructure.Persistence;
+namespace HrSaas.Modules.Employee.Application.Interfaces;
 
 public interface IEmployeeDbContext
 {

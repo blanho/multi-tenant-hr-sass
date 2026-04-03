@@ -1,12 +1,12 @@
-using HrSaas.Modules.Tenant.Domain.Entities;
+using TenantEntity = HrSaas.Modules.Tenant.Domain.Entities.Tenant;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HrSaas.Modules.Tenant.Infrastructure.Persistence.Configurations;
 
-public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
+public sealed class TenantConfiguration : IEntityTypeConfiguration<TenantEntity>
 {
-    public void Configure(EntityTypeBuilder<Tenant> builder)
+    public void Configure(EntityTypeBuilder<TenantEntity> builder)
     {
         builder.ToTable("tenants");
         builder.HasKey(t => t.Id);

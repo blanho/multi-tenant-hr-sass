@@ -1,11 +1,9 @@
-using HrSaas.TenantSdk;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HrSaas.Modules.Employee.Infrastructure.Persistence.Configurations;
 
-public sealed class EmployeeConfiguration(ITenantService tenantService)
-    : IEntityTypeConfiguration<Domain.Entities.Employee>
+public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Domain.Entities.Employee>
 {
     public void Configure(EntityTypeBuilder<Domain.Entities.Employee> builder)
     {
@@ -27,8 +25,16 @@ public sealed class EmployeeConfiguration(ITenantService tenantService)
             .HasMaxLength(320)
             .IsRequired();
 
+        builder.Property(e => e.UserId);
+
+        builder.Property(e => e.IsActive)
+            .IsRequired()
+            .HasDefaultValue(true);
+
         builder.Property(e => e.CreatedAt)
             .IsRequired();
+
+        builder.Property(e => e.UpdatedAt);
 
         builder.Property(e => e.IsDeleted)
             .IsRequired()
@@ -56,10 +62,6 @@ public sealed class EmployeeConfiguration(ITenantService tenantService)
         builder.HasIndex(e => new { e.TenantId, e.Email })
             .IsUnique()
             .HasDatabaseName("idx_employees_tenant_email_unique");
-
-        builder.HasQueryFilter(e =>
-            !e.IsDeleted &&
-            e.TenantId == tenantService.GetCurrentTenantId());
 
         builder.Ignore(e => e.DomainEvents);
     }

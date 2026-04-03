@@ -24,6 +24,16 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             logger.LogWarning("Domain rule violation: {Message}", ex.Message);
             await WriteProblemDetailsAsync(context, HttpStatusCode.BadRequest, "Domain Rule Violation", ex.Message).ConfigureAwait(false);
         }
+        catch (TenantNotFoundException ex)
+        {
+            logger.LogWarning("Tenant not found: {Message}", ex.Message);
+            await WriteProblemDetailsAsync(context, HttpStatusCode.Unauthorized, "Tenant Identification Required", ex.Message).ConfigureAwait(false);
+        }
+        catch (TenantAccessDeniedException ex)
+        {
+            logger.LogWarning("Tenant access denied: {Message}", ex.Message);
+            await WriteProblemDetailsAsync(context, HttpStatusCode.Forbidden, "Access Denied", ex.Message).ConfigureAwait(false);
+        }
         catch (NotFoundException ex)
         {
             await WriteProblemDetailsAsync(context, HttpStatusCode.NotFound, "Not Found", ex.Message).ConfigureAwait(false);
@@ -36,7 +46,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         }
     }
 
-    private static async Task WriteProblemDetailsAsync(HttpContext context, HttpStatusCode statusCode, string title, params string[] errors)
+    private static async Task WriteProblemDetailsAsync(
+        HttpContext context,
+        HttpStatusCode statusCode,
+        string title,
+        params string[] errors)
     {
         var problem = new ProblemDetails
         {

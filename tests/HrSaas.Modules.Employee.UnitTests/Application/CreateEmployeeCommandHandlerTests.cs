@@ -1,7 +1,6 @@
 using FluentAssertions;
 using HrSaas.Modules.Employee.Application.Commands;
 using HrSaas.Modules.Employee.Application.Interfaces;
-using HrSaas.Modules.Employee.Domain.Entities;
 using NSubstitute;
 
 namespace HrSaas.Modules.Employee.UnitTests.Application;
@@ -28,7 +27,7 @@ public sealed class CreateEmployeeCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBe(Guid.Empty);
-        await _repository.Received(1).AddAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).AddAsync(Arg.Any<EmployeeEntity>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
