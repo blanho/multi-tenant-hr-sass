@@ -3,6 +3,7 @@
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <ProjectReference Include="..\..\SharedKernel\HrSaas.SharedKernel\HrSaas.SharedKernel.csproj" />
   </ItemGroup>
 </Project>

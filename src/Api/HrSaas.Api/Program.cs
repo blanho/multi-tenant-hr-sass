@@ -3,6 +3,7 @@ using HrSaas.Api.Infrastructure.Idempotency;
 using HrSaas.Api.Infrastructure.Observability;
 using HrSaas.Api.Infrastructure.RateLimiting;
 using HrSaas.Api.Infrastructure.Versioning;
+using HrSaas.EventBus;
 using HrSaas.Modules.Billing;
 using HrSaas.Modules.Employee;
 using HrSaas.Modules.Identity;
@@ -44,6 +45,8 @@ try
 
     builder.Services.AddScoped<AuditableEntityInterceptor>();
     builder.Services.AddScoped<DomainEventDispatcherInterceptor>();
+
+    builder.Services.AddEventBus(builder.Configuration);
 
     builder.Services.AddEmployeeModule(builder.Configuration);
     builder.Services.AddIdentityModule(builder.Configuration);

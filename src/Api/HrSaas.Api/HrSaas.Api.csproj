@@ -25,5 +25,6 @@
     <ProjectReference Include="..\..\Modules\Tenant\HrSaas.Modules.Tenant\HrSaas.Modules.Tenant.csproj" />
     <ProjectReference Include="..\..\Modules\Leave\HrSaas.Modules.Leave\HrSaas.Modules.Leave.csproj" />
     <ProjectReference Include="..\..\Modules\Billing\HrSaas.Modules.Billing\HrSaas.Modules.Billing.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\EventBus\HrSaas.EventBus\HrSaas.EventBus.csproj" />
   </ItemGroup>
 </Project>
