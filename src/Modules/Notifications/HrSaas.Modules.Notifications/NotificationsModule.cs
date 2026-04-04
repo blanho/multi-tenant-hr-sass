@@ -1,5 +1,11 @@
+using FluentValidation;
 using HrSaas.Modules.Notifications.Application.Interfaces;
+using HrSaas.Modules.Notifications.Domain.Repositories;
+using HrSaas.Modules.Notifications.Infrastructure.Channels;
+using HrSaas.Modules.Notifications.Infrastructure.Persistence;
+using HrSaas.Modules.Notifications.Infrastructure.Repositories;
 using HrSaas.Modules.Notifications.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,8 +17,44 @@ public static class NotificationsModule
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddDbContext<NotificationsDbContext>(options =>
+            options.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_notification", "notification")));
+
+        services.AddScoped<INotificationsDbContext>(sp =>
+            sp.GetRequiredService<NotificationsDbContext>());
+
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationTemplateRepository, NotificationTemplateRepository>();
+        services.AddScoped<IUserNotificationPreferenceRepository, UserNotificationPreferenceRepository>();
+
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
-        services.AddScoped<INotificationService, SmtpNotificationService>();
+        services.Configure<SlackOptions>(configuration.GetSection(SlackOptions.SectionName));
+
+        services.AddScoped<IChannelProvider, EmailChannelProvider>();
+        services.AddScoped<IChannelProvider, InAppChannelProvider>();
+        services.AddScoped<IChannelProvider, WebhookChannelProvider>();
+        services.AddScoped<IChannelProvider, SlackChannelProvider>();
+        services.AddScoped<IChannelProviderFactory, ChannelProviderFactory>();
+
+        services.AddHttpClient("NotificationWebhook", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "HrSaas-Notifications/1.0");
+        });
+
+        services.AddHttpClient("SlackNotification", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
+        services.AddHostedService<NotificationSchedulerService>();
+
+        services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssembly(typeof(NotificationsModule).Assembly));
+
+        services.AddValidatorsFromAssembly(typeof(NotificationsModule).Assembly);
 
         return services;
     }

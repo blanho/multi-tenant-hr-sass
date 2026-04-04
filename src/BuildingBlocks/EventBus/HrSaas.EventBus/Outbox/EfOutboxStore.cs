@@ -15,7 +15,7 @@ public sealed class EfOutboxStore<TContext>(TContext dbContext) : IOutboxStore
     public async Task<IReadOnlyList<OutboxMessage>> GetUnprocessedAsync(int batchSize, CancellationToken ct = default)
     {
         return await dbContext.Set<OutboxMessage>()
-            .Where(m => !m.IsProcessed && m.ShouldRetry)
+            .Where(m => !m.ProcessedAt.HasValue && m.RetryCount < 5)
             .OrderBy(m => m.OccurredAt)
             .Take(batchSize)
             .ToListAsync(ct)

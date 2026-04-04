@@ -120,6 +120,7 @@ try
                   .AllowAnyMethod()
                   .AllowAnyHeader()));
 
+    builder.Services.AddSignalR();
     builder.Services.AddControllers();
     builder.Services.AddOpenApiDocumentation();
 
@@ -144,6 +145,9 @@ try
                 .Database.MigrateAsync();
             await scope.ServiceProvider
                 .GetRequiredService<HrSaas.Modules.Billing.Infrastructure.Persistence.BillingDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Notifications.Infrastructure.Persistence.NotificationsDbContext>()
                 .Database.MigrateAsync();
             logger.LogInformation("All database migrations applied successfully");
         }
@@ -178,6 +182,7 @@ try
     app.UseMiddleware<IdempotencyMiddleware>();
 
     app.MapControllers().RequireRateLimiting("api");
+    app.MapHub<HrSaas.Api.Hubs.NotificationHub>("/hubs/notifications");
     app.MapHealthCheckEndpoints();
 
     app.Run();

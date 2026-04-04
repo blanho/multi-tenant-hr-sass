@@ -2,6 +2,8 @@ using FluentAssertions;
 using HrSaas.Contracts.Notifications;
 using HrSaas.Modules.Notifications.Application.Consumers;
 using HrSaas.Modules.Notifications.Application.Interfaces;
+using HrSaas.Modules.Notifications.Domain.Enums;
+using HrSaas.Modules.Notifications.Domain.Repositories;
 using MassTransit;
 using MassTransit.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,14 +14,21 @@ namespace HrSaas.Consumers.UnitTests.Notifications;
 
 public sealed class SendEmailNotificationConsumerTests : IAsyncDisposable
 {
-    private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
+    private readonly INotificationRepository _repository = Substitute.For<INotificationRepository>();
+    private readonly IChannelProviderFactory _channelProviderFactory = Substitute.For<IChannelProviderFactory>();
+    private readonly IChannelProvider _emailProvider = Substitute.For<IChannelProvider>();
     private readonly ServiceProvider _provider;
     private readonly ITestHarness _harness;
 
     public SendEmailNotificationConsumerTests()
     {
+        _channelProviderFactory.GetProvider(NotificationChannel.Email).Returns(_emailProvider);
+        _emailProvider.SendAsync(Arg.Any<ChannelMessage>(), Arg.Any<CancellationToken>())
+            .Returns(new ChannelDeliveryResult(true, "OK", null));
+
         _provider = new ServiceCollection()
-            .AddScoped(_ => _notificationService)
+            .AddScoped(_ => _repository)
+            .AddScoped(_ => _channelProviderFactory)
             .AddMassTransitTestHarness(cfg =>
             {
                 cfg.AddConsumer<SendEmailNotificationConsumer>();
@@ -30,7 +39,7 @@ public sealed class SendEmailNotificationConsumerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task SendEmail_DelegatesTo_INotificationService()
+    public async Task SendEmail_DelegatesTo_EmailChannelProvider()
     {
         await _harness.Start();
 
@@ -47,11 +56,11 @@ public sealed class SendEmailNotificationConsumerTests : IAsyncDisposable
 
         (await _harness.Consumed.Any<SendEmailNotificationCommand>()).Should().BeTrue();
 
-        await _notificationService.Received(1).SendEmailAsync(
-            "user@test.io",
-            "Welcome",
-            "<h1>Welcome</h1>",
-            "Welcome",
+        await _emailProvider.Received(1).SendAsync(
+            Arg.Is<ChannelMessage>(m =>
+                m.RecipientAddress == "user@test.io" &&
+                m.Subject == "Welcome" &&
+                m.Body == "<h1>Welcome</h1>"),
             Arg.Any<CancellationToken>());
     }
 

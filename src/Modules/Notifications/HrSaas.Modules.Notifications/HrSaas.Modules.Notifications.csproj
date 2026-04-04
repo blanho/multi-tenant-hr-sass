@@ -10,9 +10,15 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.RabbitMQ" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <ProjectReference Include="..\..\..\BuildingBlocks\SharedKernel\HrSaas.SharedKernel\HrSaas.SharedKernel.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\EventBus\HrSaas.EventBus\HrSaas.EventBus.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Contracts\HrSaas.Contracts\HrSaas.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\TenantSdk\HrSaas.TenantSdk\HrSaas.TenantSdk.csproj" />
   </ItemGroup>
 
 </Project>
