@@ -3,11 +3,13 @@ using HrSaas.Modules.Notifications.Application.Interfaces;
 using HrSaas.Modules.Notifications.Domain.Entities;
 using HrSaas.Modules.Notifications.Domain.Enums;
 using HrSaas.Modules.Notifications.Domain.Repositories;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Notifications.Application.Commands;
 
+[Auditable(AuditAction.Send, AuditCategory.Notification, Severity = AuditSeverity.Low)]
 public sealed record SendNotificationCommand(
     Guid TenantId,
     Guid UserId,

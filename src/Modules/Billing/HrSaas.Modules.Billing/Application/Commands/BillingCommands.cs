@@ -2,11 +2,13 @@ using FluentValidation;
 using HrSaas.Modules.Billing.Application.DTOs;
 using HrSaas.Modules.Billing.Application.Interfaces;
 using HrSaas.Modules.Billing.Domain.Entities;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Billing.Application.Commands;
 
+[Auditable(AuditAction.Create, AuditCategory.Billing, Severity = AuditSeverity.High)]
 public sealed record CreateFreeSubscriptionCommand(Guid TenantId) : ICommand<Guid>;
 
 public sealed class CreateFreeSubscriptionCommandValidator : AbstractValidator<CreateFreeSubscriptionCommand>
@@ -34,6 +36,7 @@ public sealed class CreateFreeSubscriptionCommandHandler(ISubscriptionRepository
     }
 }
 
+[Auditable(AuditAction.Activate, AuditCategory.Billing, Severity = AuditSeverity.Critical)]
 public sealed record ActivateSubscriptionCommand(Guid TenantId, Guid SubscriptionId, decimal Price, BillingCycle Cycle, string? ExternalId) : ICommand;
 
 public sealed class ActivateSubscriptionCommandValidator : AbstractValidator<ActivateSubscriptionCommand>
@@ -64,6 +67,7 @@ public sealed class ActivateSubscriptionCommandHandler(ISubscriptionRepository r
     }
 }
 
+[Auditable(AuditAction.Cancel, AuditCategory.Billing, Severity = AuditSeverity.Critical)]
 public sealed record CancelSubscriptionCommand(Guid TenantId, Guid SubscriptionId, string Reason) : ICommand;
 
 public sealed class CancelSubscriptionCommandValidator : AbstractValidator<CancelSubscriptionCommand>

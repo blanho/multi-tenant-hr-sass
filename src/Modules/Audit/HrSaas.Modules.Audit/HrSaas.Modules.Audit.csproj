@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SharedKernel\HrSaas.SharedKernel\HrSaas.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\TenantSdk\HrSaas.TenantSdk\HrSaas.TenantSdk.csproj" />
+  </ItemGroup>
+</Project>

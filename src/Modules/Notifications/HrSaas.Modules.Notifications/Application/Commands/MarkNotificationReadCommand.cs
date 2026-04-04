@@ -1,9 +1,11 @@
 using HrSaas.Modules.Notifications.Domain.Repositories;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Notifications.Application.Commands;
 
+[Auditable(AuditAction.Update, AuditCategory.Notification, Severity = AuditSeverity.Low)]
 public sealed record MarkNotificationReadCommand(Guid NotificationId, Guid UserId) : ICommand;
 
 public sealed class MarkNotificationReadCommandHandler(

@@ -1,11 +1,13 @@
 using FluentValidation;
 using HrSaas.Modules.Employee.Application.Interfaces;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Employee.Application.Commands;
 
 
+[Auditable(AuditAction.Update, AuditCategory.Employee, Severity = AuditSeverity.Medium)]
 public sealed record UpdateEmployeeCommand(
     Guid TenantId,
     Guid EmployeeId,
@@ -45,6 +47,7 @@ public sealed class UpdateEmployeeCommandHandler(IEmployeeRepository repository)
     }
 }
 
+[Auditable(AuditAction.Delete, AuditCategory.Employee, Severity = AuditSeverity.High)]
 public sealed record DeleteEmployeeCommand(Guid TenantId, Guid EmployeeId) : ICommand;
 
 public sealed class DeleteEmployeeCommandValidator : AbstractValidator<DeleteEmployeeCommand>

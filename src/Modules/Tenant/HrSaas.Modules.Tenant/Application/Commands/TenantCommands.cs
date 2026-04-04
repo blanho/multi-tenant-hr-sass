@@ -2,12 +2,14 @@ using FluentValidation;
 using HrSaas.Modules.Tenant.Application.DTOs;
 using HrSaas.Modules.Tenant.Application.Interfaces;
 using HrSaas.Modules.Tenant.Domain.Entities;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 using TenantEntity = HrSaas.Modules.Tenant.Domain.Entities.Tenant;
 
 namespace HrSaas.Modules.Tenant.Application.Commands;
 
+[Auditable(AuditAction.Create, AuditCategory.Tenant, Severity = AuditSeverity.High)]
 public sealed record CreateTenantCommand(string Name, string Slug, string ContactEmail, PlanType Plan = PlanType.Free) : ICommand<Guid>;
 
 public sealed class CreateTenantCommandValidator : AbstractValidator<CreateTenantCommand>
@@ -38,6 +40,7 @@ public sealed class CreateTenantCommandHandler(ITenantRepository repo) : IReques
     }
 }
 
+[Auditable(AuditAction.Suspend, AuditCategory.Tenant, Severity = AuditSeverity.Critical)]
 public sealed record SuspendTenantCommand(Guid TenantId, string Reason) : ICommand;
 
 public sealed class SuspendTenantCommandValidator : AbstractValidator<SuspendTenantCommand>
@@ -66,6 +69,7 @@ public sealed class SuspendTenantCommandHandler(ITenantRepository repo) : IReque
     }
 }
 
+[Auditable(AuditAction.Upgrade, AuditCategory.Tenant, Severity = AuditSeverity.High)]
 public sealed record UpgradePlanCommand(Guid TenantId, PlanType NewPlan) : ICommand;
 
 public sealed class UpgradePlanCommandValidator : AbstractValidator<UpgradePlanCommand>
@@ -94,6 +98,7 @@ public sealed class UpgradePlanCommandHandler(ITenantRepository repo) : IRequest
     }
 }
 
+[Auditable(AuditAction.Reinstate, AuditCategory.Tenant, Severity = AuditSeverity.High)]
 public sealed record ReinstateCommand(Guid TenantId) : ICommand;
 
 public sealed class ReinstateCommandValidator : AbstractValidator<ReinstateCommand>

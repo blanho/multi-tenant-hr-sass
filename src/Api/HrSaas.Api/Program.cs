@@ -1,3 +1,4 @@
+using HrSaas.Api.Infrastructure.Audit;
 using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Api.Infrastructure.Azure;
 using HrSaas.Api.Infrastructure.FeatureManagement;
@@ -9,12 +10,14 @@ using HrSaas.Api.Infrastructure.RateLimiting;
 using HrSaas.Api.Infrastructure.Versioning;
 using HrSaas.EventBus;
 using HrSaas.JobScheduler;
+using HrSaas.Modules.Audit;
 using HrSaas.Modules.Billing;
 using HrSaas.Modules.Employee;
 using HrSaas.Modules.Identity;
 using HrSaas.Modules.Leave;
 using HrSaas.Modules.Notifications;
 using HrSaas.Modules.Tenant;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.Behaviors;
 using HrSaas.SharedKernel.Interceptors;
 using HrSaas.SharedKernel.Storage;
@@ -68,12 +71,18 @@ try
     builder.Services.AddLeaveModule(builder.Configuration);
     builder.Services.AddBillingModule(builder.Configuration);
     builder.Services.AddNotificationsModule(builder.Configuration);
+    builder.Services.AddAuditModule(builder.Configuration);
+
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
+    builder.Services.AddScoped<IEntityChangeCollector, EntityChangeCollector>();
 
     builder.Services.AddMediatR(cfg =>
     {
         cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
         cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
     });
 
     builder.Services.AddStackExchangeRedisCache(opts =>
@@ -150,6 +159,9 @@ try
                 .Database.MigrateAsync();
             await scope.ServiceProvider
                 .GetRequiredService<HrSaas.Modules.Notifications.Infrastructure.Persistence.NotificationsDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Audit.Infrastructure.Persistence.AuditDbContext>()
                 .Database.MigrateAsync();
             logger.LogInformation("All database migrations applied successfully");
         }

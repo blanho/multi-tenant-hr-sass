@@ -2,11 +2,13 @@ using FluentValidation;
 using HrSaas.Modules.Notifications.Domain.Entities;
 using HrSaas.Modules.Notifications.Domain.Enums;
 using HrSaas.Modules.Notifications.Domain.Repositories;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Notifications.Application.Commands;
 
+[Auditable(AuditAction.Create, AuditCategory.Notification, Severity = AuditSeverity.Medium)]
 public sealed record CreateTemplateCommand(
     Guid TenantId,
     string Name,

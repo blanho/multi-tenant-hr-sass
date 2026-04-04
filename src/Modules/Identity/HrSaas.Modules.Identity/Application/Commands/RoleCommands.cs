@@ -2,11 +2,13 @@ using FluentValidation;
 using HrSaas.Modules.Identity.Application.DTOs;
 using HrSaas.Modules.Identity.Application.Interfaces;
 using HrSaas.Modules.Identity.Domain.Entities;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Identity.Application.Commands;
 
+[Auditable(AuditAction.Create, AuditCategory.Role, Severity = AuditSeverity.High)]
 public sealed record CreateRoleCommand(
     Guid TenantId,
     string Name,
@@ -45,6 +47,7 @@ public sealed class CreateRoleCommandHandler(
     }
 }
 
+[Auditable(AuditAction.Update, AuditCategory.Role, Severity = AuditSeverity.Critical)]
 public sealed record UpdateRolePermissionsCommand(
     Guid TenantId,
     Guid RoleId,
@@ -79,6 +82,7 @@ public sealed class UpdateRolePermissionsCommandHandler(
     }
 }
 
+[Auditable(AuditAction.Assign, AuditCategory.Role, Severity = AuditSeverity.Critical)]
 public sealed record AssignRoleCommand(
     Guid TenantId,
     Guid UserId,
@@ -116,6 +120,7 @@ public sealed class AssignRoleCommandHandler(
     }
 }
 
+[Auditable(AuditAction.Delete, AuditCategory.Role, Severity = AuditSeverity.Critical)]
 public sealed record DeleteRoleCommand(
     Guid TenantId,
     Guid RoleId) : ICommand;

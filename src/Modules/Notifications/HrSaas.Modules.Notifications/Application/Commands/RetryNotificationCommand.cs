@@ -1,12 +1,14 @@
 using HrSaas.Modules.Notifications.Application.Interfaces;
 using HrSaas.Modules.Notifications.Domain.Enums;
 using HrSaas.Modules.Notifications.Domain.Repositories;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace HrSaas.Modules.Notifications.Application.Commands;
 
+[Auditable(AuditAction.Retry, AuditCategory.Notification, Severity = AuditSeverity.Medium)]
 public sealed record RetryNotificationCommand(Guid NotificationId) : ICommand<Guid>;
 
 public sealed class RetryNotificationCommandHandler(

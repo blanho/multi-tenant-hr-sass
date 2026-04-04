@@ -1,6 +1,7 @@
 using FluentValidation;
 using HrSaas.Modules.Employee.Application.DTOs;
 using HrSaas.Modules.Employee.Application.Interfaces;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 using EmployeeEntity = HrSaas.Modules.Employee.Domain.Entities.Employee;
@@ -8,6 +9,7 @@ using EmployeeEntity = HrSaas.Modules.Employee.Domain.Entities.Employee;
 namespace HrSaas.Modules.Employee.Application.Commands;
 
 
+[Auditable(AuditAction.Create, AuditCategory.Employee, Severity = AuditSeverity.Medium)]
 public sealed record CreateEmployeeCommand(
     Guid TenantId,
     string Name,

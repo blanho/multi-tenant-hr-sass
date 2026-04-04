@@ -3,11 +3,13 @@ using HrSaas.Modules.Identity.Application.DTOs;
 using HrSaas.Modules.Identity.Application.Interfaces;
 using HrSaas.Modules.Identity.Domain.Entities;
 using HrSaas.Modules.Identity.Domain.ValueObjects;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Identity.Application.Commands;
 
+[Auditable(AuditAction.Register, AuditCategory.Identity, Severity = AuditSeverity.High)]
 public sealed record RegisterCommand(
     Guid TenantId,
     string Email,
@@ -58,6 +60,7 @@ public sealed class RegisterCommandHandler(
     }
 }
 
+[Auditable(AuditAction.Login, AuditCategory.Identity, Severity = AuditSeverity.High)]
 public sealed record LoginCommand(Guid TenantId, string Email, string Password) : ICommand<AuthTokenDto>;
 
 public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>

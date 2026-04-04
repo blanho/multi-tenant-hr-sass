@@ -2,11 +2,13 @@ using FluentValidation;
 using HrSaas.Modules.Leave.Application.DTOs;
 using HrSaas.Modules.Leave.Application.Interfaces;
 using HrSaas.Modules.Leave.Domain.Entities;
+using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
 using MediatR;
 
 namespace HrSaas.Modules.Leave.Application.Commands;
 
+[Auditable(AuditAction.Create, AuditCategory.Leave, Severity = AuditSeverity.Medium)]
 public sealed record ApplyLeaveCommand(
     Guid TenantId,
     Guid EmployeeId,
@@ -38,6 +40,7 @@ public sealed class ApplyLeaveCommandHandler(ILeaveRepository repo) : IRequestHa
     }
 }
 
+[Auditable(AuditAction.Approve, AuditCategory.Leave, Severity = AuditSeverity.High)]
 public sealed record ApproveLeaveCommand(Guid TenantId, Guid LeaveRequestId, Guid ApprovedByUserId) : ICommand;
 
 public sealed class ApproveLeaveCommandValidator : AbstractValidator<ApproveLeaveCommand>
@@ -75,6 +78,7 @@ public sealed class ApproveLeaveCommandHandler(ILeaveRepository repo) : IRequest
     }
 }
 
+[Auditable(AuditAction.Reject, AuditCategory.Leave, Severity = AuditSeverity.High)]
 public sealed record RejectLeaveCommand(Guid TenantId, Guid LeaveRequestId, Guid RejectedByUserId, string Note) : ICommand;
 
 public sealed class RejectLeaveCommandValidator : AbstractValidator<RejectLeaveCommand>
@@ -113,6 +117,7 @@ public sealed class RejectLeaveCommandHandler(ILeaveRepository repo) : IRequestH
     }
 }
 
+[Auditable(AuditAction.Cancel, AuditCategory.Leave, Severity = AuditSeverity.Medium)]
 public sealed record CancelLeaveCommand(Guid TenantId, Guid LeaveRequestId, Guid EmployeeId) : ICommand;
 
 public sealed class CancelLeaveCommandValidator : AbstractValidator<CancelLeaveCommand>
