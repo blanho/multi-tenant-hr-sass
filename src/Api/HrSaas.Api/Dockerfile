@@ -19,6 +19,9 @@ COPY ["src/BuildingBlocks/TenantSdk/HrSaas.TenantSdk/HrSaas.TenantSdk.csproj", "
 COPY ["src/BuildingBlocks/EventBus/HrSaas.EventBus/HrSaas.EventBus.csproj", "src/BuildingBlocks/EventBus/HrSaas.EventBus/"]
 COPY ["src/BuildingBlocks/Contracts/HrSaas.Contracts/HrSaas.Contracts.csproj", "src/BuildingBlocks/Contracts/HrSaas.Contracts/"]
 COPY ["src/Modules/Notifications/HrSaas.Modules.Notifications/HrSaas.Modules.Notifications.csproj", "src/Modules/Notifications/HrSaas.Modules.Notifications/"]
+COPY ["src/Modules/Audit/HrSaas.Modules.Audit/HrSaas.Modules.Audit.csproj", "src/Modules/Audit/HrSaas.Modules.Audit/"]
+COPY ["src/Modules/Storage/HrSaas.Modules.Storage/HrSaas.Modules.Storage.csproj", "src/Modules/Storage/HrSaas.Modules.Storage/"]
+COPY ["src/BuildingBlocks/JobScheduler/HrSaas.JobScheduler/HrSaas.JobScheduler.csproj", "src/BuildingBlocks/JobScheduler/HrSaas.JobScheduler/"]
 
 COPY ["Directory.Build.props", "./"]
 COPY ["Directory.Packages.props", "./"]
@@ -42,4 +45,8 @@ WORKDIR /app
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 COPY --from=publish /app/publish .
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health/live || exit 1
+
 ENTRYPOINT ["dotnet", "HrSaas.Api.dll"]

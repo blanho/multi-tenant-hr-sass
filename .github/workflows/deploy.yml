@@ -1,0 +1,330 @@
+name: Deploy HrSaas
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  BUILD_CONFIGURATION: 'Release'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: hrsaas_test
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore HrSaas.sln
+
+      - name: Build
+        run: dotnet build HrSaas.sln --no-restore -c ${{ env.BUILD_CONFIGURATION }}
+
+      - name: Test
+        run: dotnet test HrSaas.sln --no-build -c ${{ env.BUILD_CONFIGURATION }} --collect "XPlat Code Coverage" --logger trx --results-directory TestResults
+        env:
+          ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=hrsaas_test;Username=test;Password=test
+
+      - name: Publish Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults/
+
+      - name: Format Check
+        run: dotnet format HrSaas.sln --verify-no-changes --severity warn
+
+      - name: Publish API
+        run: dotnet publish src/Api/HrSaas.Api/HrSaas.Api.csproj -c ${{ env.BUILD_CONFIGURATION }} -o publish/api
+
+      - name: Upload API Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrsaas-api
+          path: publish/api
+          retention-days: 5
+
+      - name: Upload Infra Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: infra
+          path: infra/
+          retention-days: 5
+
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Download API Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hrsaas-api
+          path: api
+
+      - name: Download Infra Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: infra
+          path: infra
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Infrastructure
+        id: bicep
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: rg-hrsaas-dev
+          template: infra/main.bicep
+          parameters: >
+            environmentName=dev
+            postgresPassword=${{ secrets.POSTGRES_PASSWORD }}
+            jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ steps.bicep.outputs.appServiceName }}
+          package: api
+
+      - name: Health Check
+        run: |
+          APP_URL="${{ steps.bicep.outputs.appServiceUrl }}"
+          echo "Waiting for deployment..."
+          sleep 30
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health/live" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS"
+            sleep 15
+          done
+          echo "Health check failed"
+          exit 1
+
+  deploy-staging:
+    name: Deploy to Staging (Blue-Green)
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      app-service-name: ${{ steps.bicep.outputs.appServiceName }}
+      app-service-url: ${{ steps.bicep.outputs.appServiceUrl }}
+    steps:
+      - name: Download API Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hrsaas-api
+          path: api
+
+      - name: Download Infra Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: infra
+          path: infra
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Infrastructure
+        id: bicep
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: rg-hrsaas-staging
+          template: infra/main.bicep
+          parameters: >
+            environmentName=staging
+            postgresPassword=${{ secrets.POSTGRES_PASSWORD }}
+            jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
+
+      - name: Deploy to Staging Slot
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ steps.bicep.outputs.appServiceName }}
+          slot-name: staging
+          package: api
+
+      - name: Smoke Test Staging Slot
+        run: |
+          SLOT_URL="https://${{ steps.bicep.outputs.appServiceName }}-staging.azurewebsites.net"
+          echo "=== Smoke Testing Staging Slot ==="
+          echo "Target: $SLOT_URL"
+          sleep 45
+          for i in {1..10}; do
+            LIVE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/live" 2>/dev/null || echo "000")
+            READY=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/ready" 2>/dev/null || echo "000")
+            echo "Attempt $i/10: live=$LIVE ready=$READY"
+            if [ "$LIVE" = "200" ] && [ "$READY" = "200" ]; then
+              echo "=== Staging slot healthy ==="
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "=== Staging slot FAILED health checks ==="
+          exit 1
+
+      - name: Swap to Production (Zero Downtime)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp deployment slot swap \
+              -g rg-hrsaas-staging \
+              -n ${{ steps.bicep.outputs.appServiceName }} \
+              -s staging \
+              --target-slot production
+
+      - name: Post-Swap Verification
+        run: |
+          APP_URL="${{ steps.bicep.outputs.appServiceUrl }}"
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health/live" || true)
+          if [ "$STATUS" = "200" ]; then
+            echo "Post-swap verification passed"
+          else
+            echo "Post-swap check returned $STATUS — monitor closely"
+          fi
+
+  deploy-production:
+    name: Deploy to Production (Blue-Green)
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Download API Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hrsaas-api
+          path: api
+
+      - name: Download Infra Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: infra
+          path: infra
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Infrastructure
+        id: bicep
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: rg-hrsaas-prod
+          template: infra/main.bicep
+          parameters: >
+            environmentName=prod
+            postgresPassword=${{ secrets.POSTGRES_PASSWORD }}
+            jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
+
+      - name: Deploy to Staging Slot
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ steps.bicep.outputs.appServiceName }}
+          slot-name: staging
+          package: api
+
+      - name: Smoke Test Staging Slot
+        run: |
+          SLOT_URL="https://${{ steps.bicep.outputs.appServiceName }}-staging.azurewebsites.net"
+          echo "=== Smoke Testing Production Staging Slot ==="
+          echo "Target: $SLOT_URL"
+          sleep 60
+          for i in {1..15}; do
+            LIVE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/live" 2>/dev/null || echo "000")
+            READY=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/ready" 2>/dev/null || echo "000")
+            echo "Attempt $i/15: live=$LIVE ready=$READY"
+            if [ "$LIVE" = "200" ] && [ "$READY" = "200" ]; then
+              echo "=== Staging slot ready for production ==="
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "=== Staging slot FAILED ==="
+          exit 1
+
+      - name: Swap to Production (Zero Downtime)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "Performing production slot swap..."
+            az webapp deployment slot swap \
+              -g rg-hrsaas-prod \
+              -n ${{ steps.bicep.outputs.appServiceName }} \
+              -s staging \
+              --target-slot production
+            echo "Slot swap completed"
+
+      - name: Post-Swap Health Verification
+        id: health
+        run: |
+          APP_URL="${{ steps.bicep.outputs.appServiceUrl }}"
+          echo "=== Production Post-Swap Verification ==="
+          sleep 15
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health/live" || true)
+            echo "Post-swap check $i: status=$STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "=== Production healthy ==="
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "rollback=true" >> "$GITHUB_OUTPUT"
+          echo "Production health check failed after swap"
+          exit 1
+
+      - name: Auto-Rollback on Failure
+        if: failure() && steps.health.outputs.rollback == 'true'
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "ROLLBACK: Swapping slots back to previous version..."
+            az webapp deployment slot swap \
+              -g rg-hrsaas-prod \
+              -n ${{ steps.bicep.outputs.appServiceName }} \
+              -s staging \
+              --target-slot production
+            echo "Rollback completed — previous version restored"

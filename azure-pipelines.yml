@@ -176,7 +176,7 @@ stages:
                   displayName: Health Check
 
   - stage: DeployStaging
-    displayName: Deploy to Staging
+    displayName: Deploy to Staging (Blue-Green)
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     variables:
@@ -213,8 +213,8 @@ stages:
                       echo "##vso[task.setvariable variable=appServiceName;isOutput=true]$(jq -r '.properties.outputs.appServiceName.value' deployment-output.json)"
                     name: bicepDeploy
 
-      - deployment: DeployApp
-        displayName: Deploy Application
+      - deployment: DeployToSlot
+        displayName: Deploy to Staging Slot
         dependsOn: DeployInfra
         pool:
           vmImage: $(vmImage)
@@ -226,32 +226,71 @@ stages:
             deploy:
               steps:
                 - task: AzureWebApp@1
-                  displayName: Deploy to App Service
+                  displayName: Deploy to Staging Slot
                   inputs:
                     azureSubscription: 'hrsaas-azure-connection'
                     appType: webAppLinux
                     appName: $(appServiceName)
+                    slotName: staging
                     package: '$(Pipeline.Workspace)/hrsaas-api/*.zip'
 
                 - bash: |
-                    APP_URL="https://$(appServiceName).azurewebsites.net"
-                    echo "Waiting for deployment to settle..."
-                    sleep 30
-                    for i in {1..5}; do
-                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/health/live" || true)
-                      if [ "$STATUS" = "200" ]; then
-                        echo "Health check passed"
+                    SLOT_URL="https://$(appServiceName)-staging.azurewebsites.net"
+                    echo "=== Smoke Testing Staging Slot ==="
+                    echo "Target: $SLOT_URL"
+                    sleep 45
+                    for i in {1..10}; do
+                      LIVE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/live" 2>/dev/null || echo "000")
+                      READY=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/ready" 2>/dev/null || echo "000")
+                      echo "Attempt $i/10: live=$LIVE ready=$READY"
+                      if [ "$LIVE" = "200" ] && [ "$READY" = "200" ]; then
+                        echo "=== Staging slot healthy ==="
                         exit 0
                       fi
-                      echo "Attempt $i: status=$STATUS, retrying in 15s..."
                       sleep 15
                     done
-                    echo "Health check failed after 5 attempts"
+                    echo "=== Staging slot FAILED health checks ==="
                     exit 1
-                  displayName: Health Check
+                  displayName: Smoke Test Staging Slot
+
+      - deployment: SwapSlots
+        displayName: Swap Staging → Production (Zero Downtime)
+        dependsOn: DeployToSlot
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-staging
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureAppServiceManage@0
+                  displayName: Swap Staging Slot to Production
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    action: 'Swap Slots'
+                    webAppName: $(appServiceName)
+                    resourceGroupName: $(azureResourceGroup)
+                    sourceSlot: staging
+
+                - bash: |
+                    APP_URL="https://$(appServiceName).azurewebsites.net"
+                    echo "=== Post-Swap Verification ==="
+                    sleep 10
+                    for i in {1..5}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health/live" || true)
+                      echo "Post-swap check $i: status=$STATUS"
+                      if [ "$STATUS" = "200" ]; then
+                        echo "=== Production healthy after swap ==="
+                        exit 0
+                      fi
+                      sleep 10
+                    done
+                    echo "WARNING: Post-swap health check inconclusive"
+                    exit 1
+                  displayName: Post-Swap Health Check
 
   - stage: DeployProd
-    displayName: Deploy to Production
+    displayName: Deploy to Production (Blue-Green)
     dependsOn: DeployStaging
     condition: succeeded()
     variables:
@@ -288,8 +327,8 @@ stages:
                       echo "##vso[task.setvariable variable=appServiceName;isOutput=true]$(jq -r '.properties.outputs.appServiceName.value' deployment-output.json)"
                     name: bicepDeploy
 
-      - deployment: DeployApp
-        displayName: Deploy Application
+      - deployment: DeployToSlot
+        displayName: Deploy to Staging Slot
         dependsOn: DeployInfra
         pool:
           vmImage: $(vmImage)
@@ -301,26 +340,75 @@ stages:
             deploy:
               steps:
                 - task: AzureWebApp@1
-                  displayName: Deploy to App Service
+                  displayName: Deploy to Staging Slot
                   inputs:
                     azureSubscription: 'hrsaas-azure-connection'
                     appType: webAppLinux
                     appName: $(appServiceName)
+                    slotName: staging
                     package: '$(Pipeline.Workspace)/hrsaas-api/*.zip'
 
                 - bash: |
-                    APP_URL="https://$(appServiceName).azurewebsites.net"
-                    echo "Waiting for deployment to settle..."
-                    sleep 30
-                    for i in {1..5}; do
-                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/health/live" || true)
-                      if [ "$STATUS" = "200" ]; then
-                        echo "Health check passed"
+                    SLOT_URL="https://$(appServiceName)-staging.azurewebsites.net"
+                    echo "=== Smoke Testing Production Staging Slot ==="
+                    echo "Target: $SLOT_URL"
+                    sleep 60
+                    for i in {1..15}; do
+                      LIVE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/live" 2>/dev/null || echo "000")
+                      READY=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SLOT_URL/health/ready" 2>/dev/null || echo "000")
+                      echo "Attempt $i/15: live=$LIVE ready=$READY"
+                      if [ "$LIVE" = "200" ] && [ "$READY" = "200" ]; then
+                        echo "=== Production staging slot healthy ==="
                         exit 0
                       fi
-                      echo "Attempt $i: status=$STATUS, retrying in 15s..."
                       sleep 15
                     done
-                    echo "Health check failed after 5 attempts"
+                    echo "=== Production staging slot FAILED ==="
                     exit 1
-                  displayName: Health Check
+                  displayName: Smoke Test Staging Slot
+
+      - deployment: SwapSlots
+        displayName: Swap to Production (Zero Downtime)
+        dependsOn: DeployToSlot
+        pool:
+          vmImage: $(vmImage)
+        environment: hrsaas-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureAppServiceManage@0
+                  displayName: Swap Staging Slot to Production
+                  inputs:
+                    azureSubscription: 'hrsaas-azure-connection'
+                    action: 'Swap Slots'
+                    webAppName: $(appServiceName)
+                    resourceGroupName: $(azureResourceGroup)
+                    sourceSlot: staging
+
+                - bash: |
+                    APP_URL="https://$(appServiceName).azurewebsites.net"
+                    echo "=== Production Post-Swap Verification ==="
+                    sleep 15
+                    PASS=false
+                    for i in {1..5}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health/live" || true)
+                      echo "Post-swap check $i: status=$STATUS"
+                      if [ "$STATUS" = "200" ]; then
+                        PASS=true
+                        echo "=== Production healthy ==="
+                        break
+                      fi
+                      sleep 10
+                    done
+                    if [ "$PASS" = "false" ]; then
+                      echo "=== ROLLBACK: Swapping back to previous version ==="
+                      az webapp deployment slot swap \
+                        -g $(azureResourceGroup) \
+                        -n $(appServiceName) \
+                        -s staging \
+                        --target-slot production 2>/dev/null || true
+                      echo "=== Rollback completed ==="
+                      exit 1
+                    fi
+                  displayName: Post-Swap Health Check with Auto-Rollback

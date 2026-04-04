@@ -26,6 +26,7 @@ using HrSaas.TenantSdk;
 using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Serilog;
@@ -134,13 +135,18 @@ try
                   .AllowAnyHeader()));
 
     builder.Services.AddSignalR();
+    builder.Services.AddResponseCompression(opts => opts.EnableForHttps = true);
     builder.Services.AddControllers();
     builder.Services.AddOpenApiDocumentation();
 
     var app = builder.Build();
 
-    using (var scope = app.Services.CreateScope())
+    var autoMigrate = app.Environment.IsDevelopment() ||
+        app.Configuration.GetValue<bool>("Database:AutoMigrate");
+
+    if (autoMigrate)
     {
+        using var scope = app.Services.CreateScope();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         try
         {
@@ -177,11 +183,17 @@ try
         }
     }
 
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+
+    app.UseResponseCompression();
     app.UseSerilogRequestLogging();
     app.UseFeatureFlags();
     app.UseMiddleware<HrSaas.Api.Middleware.ExceptionMiddleware>();
 
-    if (app.Environment.IsDevelopment())
+    if (!app.Environment.IsProduction())
     {
         app.MapOpenApi();
         app.MapScalarApiReference(opts =>
