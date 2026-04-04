@@ -1,5 +1,6 @@
 using HrSaas.EventBus.Outbox;
 using HrSaas.SharedKernel.Events;
+using HrSaas.SharedKernel.Jobs;
 using HrSaas.SharedKernel.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,7 +21,10 @@ public static class EventBusServiceExtensions
 
         services.AddScoped<IOutboxStore, EfOutboxStore<OutboxDbContext>>();
         services.AddScoped<IEventBus, OutboxPublisher>();
-        services.AddHostedService<OutboxProcessor>();
+
+        services.AddScoped<OutboxProcessorJob>();
+        services.AddScoped<OutboxCleanupJob>();
+        services.AddSingleton<IRecurringJobConfiguration, OutboxJobConfiguration>();
 
         return services;
     }

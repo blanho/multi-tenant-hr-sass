@@ -8,6 +8,7 @@ using HrSaas.Api.Infrastructure.OpenApi;
 using HrSaas.Api.Infrastructure.RateLimiting;
 using HrSaas.Api.Infrastructure.Versioning;
 using HrSaas.EventBus;
+using HrSaas.JobScheduler;
 using HrSaas.Modules.Billing;
 using HrSaas.Modules.Employee;
 using HrSaas.Modules.Identity;
@@ -59,6 +60,7 @@ try
     builder.Services.AddScoped<DomainEventDispatcherInterceptor>();
 
     builder.Services.AddEventBus(builder.Configuration);
+    builder.Services.AddJobScheduler(builder.Configuration);
 
     builder.Services.AddEmployeeModule(builder.Configuration);
     builder.Services.AddIdentityModule(builder.Configuration);
@@ -180,6 +182,9 @@ try
     app.UseRateLimiter();
     app.UseMiddleware<TenantMiddleware>();
     app.UseMiddleware<IdempotencyMiddleware>();
+
+    app.UseJobDashboard(requireAuth: !app.Environment.IsDevelopment());
+    app.RegisterRecurringJobs();
 
     app.MapControllers().RequireRateLimiting("api");
     app.MapHub<HrSaas.Api.Hubs.NotificationHub>("/hubs/notifications");

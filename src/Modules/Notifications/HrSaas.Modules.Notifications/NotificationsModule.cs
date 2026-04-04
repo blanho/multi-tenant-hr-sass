@@ -2,9 +2,10 @@ using FluentValidation;
 using HrSaas.Modules.Notifications.Application.Interfaces;
 using HrSaas.Modules.Notifications.Domain.Repositories;
 using HrSaas.Modules.Notifications.Infrastructure.Channels;
+using HrSaas.Modules.Notifications.Infrastructure.Jobs;
 using HrSaas.Modules.Notifications.Infrastructure.Persistence;
 using HrSaas.Modules.Notifications.Infrastructure.Repositories;
-using HrSaas.Modules.Notifications.Infrastructure.Services;
+using HrSaas.SharedKernel.Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,7 +50,11 @@ public static class NotificationsModule
             client.Timeout = TimeSpan.FromSeconds(15);
         });
 
-        services.AddHostedService<NotificationSchedulerService>();
+        services.AddScoped<ScheduledNotificationDispatchJob>();
+        services.AddScoped<FailedNotificationRetryJob>();
+        services.AddScoped<NotificationDigestJob>();
+        services.AddScoped<ExpiredNotificationCleanupJob>();
+        services.AddSingleton<IRecurringJobConfiguration, NotificationJobConfiguration>();
 
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(NotificationsModule).Assembly));

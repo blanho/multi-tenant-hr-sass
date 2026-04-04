@@ -45,6 +45,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.Modules.Notification
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.Consumers.UnitTests", "tests\HrSaas.Consumers.UnitTests\HrSaas.Consumers.UnitTests.csproj", "{4C053E66-34E9-47AF-B799-59D053371CBA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{7266C4A9-E384-DC00-0EB6-47F6002CFBA7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.JobScheduler", "src\BuildingBlocks\JobScheduler\HrSaas.JobScheduler\HrSaas.JobScheduler.csproj", "{8E0E5298-8C19-44B2-8A16-145F28C081F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -235,6 +239,18 @@ Global
 		{4C053E66-34E9-47AF-B799-59D053371CBA}.Release|x64.Build.0 = Release|Any CPU
 		{4C053E66-34E9-47AF-B799-59D053371CBA}.Release|x86.ActiveCfg = Release|Any CPU
 		{4C053E66-34E9-47AF-B799-59D053371CBA}.Release|x86.Build.0 = Release|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Debug|x64.Build.0 = Debug|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Debug|x86.Build.0 = Debug|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Release|x64.ActiveCfg = Release|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Release|x64.Build.0 = Release|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Release|x86.ActiveCfg = Release|Any CPU
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -259,5 +275,6 @@ Global
 		{9095CE63-81A8-4A1D-A330-7C043B506141} = {22222222-2222-2222-2222-222222222222}
 		{A5674FAC-3355-417C-A7BA-743362559A57} = {33333333-3333-3333-3333-333333333333}
 		{4C053E66-34E9-47AF-B799-59D053371CBA} = {66666666-6666-6666-6666-666666666666}
+		{8E0E5298-8C19-44B2-8A16-145F28C081F3} = {7266C4A9-E384-DC00-0EB6-47F6002CFBA7}
 	EndGlobalSection
 EndGlobal

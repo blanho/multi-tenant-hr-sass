@@ -80,6 +80,15 @@ public sealed class Subscription : BaseEntity
         AddDomainEvent(new SubscriptionCancelledEvent(TenantId, Id, reason));
     }
 
+    public void Expire()
+    {
+        if (Status == SubscriptionStatus.Expired)
+            throw new DomainException("Subscription is already expired.");
+
+        Status = SubscriptionStatus.Expired;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void MarkPastDue() { Status = SubscriptionStatus.PastDue; UpdatedAt = DateTime.UtcNow; }
 
     public bool CanAddSeat() => UsedSeats < MaxSeats;
