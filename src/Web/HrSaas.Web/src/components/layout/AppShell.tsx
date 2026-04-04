@@ -14,24 +14,40 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
-import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
-import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
+import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { useAuth } from "../../features/auth/auth-context";
 
 const drawerWidth = 260;
 
-const navItems = [
+const mainNav = [
   { label: "Dashboard", path: "/", icon: <DashboardRoundedIcon /> },
   { label: "Employees", path: "/employees", icon: <GroupsRoundedIcon /> },
   { label: "Leave", path: "/leave", icon: <EventRoundedIcon /> },
+];
+
+const adminNav = [
   { label: "Tenants", path: "/tenants", icon: <ApartmentRoundedIcon /> },
+  { label: "Users", path: "/users", icon: <PeopleRoundedIcon /> },
+  { label: "Roles", path: "/roles", icon: <AdminPanelSettingsRoundedIcon /> },
   { label: "Billing", path: "/billing", icon: <CreditCardRoundedIcon /> },
+];
+
+const systemNav = [
   { label: "Notifications", path: "/notifications", icon: <NotificationsRoundedIcon /> },
+  { label: "Preferences", path: "/notification-preferences", icon: <TuneRoundedIcon /> },
+  { label: "Files", path: "/files", icon: <FolderRoundedIcon /> },
+  { label: "Audit Logs", path: "/audit-logs", icon: <HistoryRoundedIcon /> },
 ];
 
 export function AppShell() {
@@ -61,7 +77,43 @@ export function AppShell() {
         </Toolbar>
         <Divider />
         <List sx={{ p: 1 }}>
-          {navItems.map((item) => (
+          {mainNav.map((item) => (
+            <ListItemButton
+              key={item.path}
+              component={RouterLink}
+              to={item.path}
+              selected={location.pathname === item.path}
+              sx={{ borderRadius: 2, mb: 0.5 }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
+        <Divider />
+        <Typography variant="overline" sx={{ px: 2, pt: 1.5, color: "text.disabled" }}>
+          Administration
+        </Typography>
+        <List sx={{ p: 1, pt: 0 }}>
+          {adminNav.map((item) => (
+            <ListItemButton
+              key={item.path}
+              component={RouterLink}
+              to={item.path}
+              selected={location.pathname === item.path}
+              sx={{ borderRadius: 2, mb: 0.5 }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
+        <Divider />
+        <Typography variant="overline" sx={{ px: 2, pt: 1.5, color: "text.disabled" }}>
+          System
+        </Typography>
+        <List sx={{ p: 1, pt: 0 }}>
+          {systemNav.map((item) => (
             <ListItemButton
               key={item.path}
               component={RouterLink}

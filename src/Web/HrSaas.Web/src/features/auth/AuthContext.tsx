@@ -39,7 +39,7 @@ export function AuthProvider({ children }: Readonly<PropsWithChildren>) {
       isBootstrapping,
       tenantId: claims?.tenant_id ?? session?.user.tenantId ?? null,
       login: async (payload) => {
-        const token = await api.login(payload);
+        const token = await api.auth.login(payload);
         setSession(token);
         setCurrentSession(token);
       },

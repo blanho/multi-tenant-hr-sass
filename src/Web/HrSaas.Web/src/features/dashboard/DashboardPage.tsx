@@ -1,138 +1,306 @@
-import { Card, CardContent, Grid, LinearProgress, Stack, Typography } from "@mui/material";
-import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import EventBusyRoundedIcon from "@mui/icons-material/EventBusyRounded";
-import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
+import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
+import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
+import PaymentRoundedIcon from "@mui/icons-material/PaymentRounded";
+import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  LinearProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import dayjs from "dayjs";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatCard } from "../../components/common/StatCard";
+import { StatusChip } from "../../components/common/StatusChip";
 import { api } from "../../lib/api";
+import { qk } from "../../lib/query-keys";
+
+const PIE_COLORS = ["#7C3AED", "#F97316", "#10B981", "#3B82F6", "#EF4444", "#8B5CF6"];
 
 export function DashboardPage() {
   const employeesQuery = useQuery({
-    queryKey: ["employees", 1, 100],
-    queryFn: () => api.getEmployees(1, 100),
+    queryKey: qk.employees.list(1, 1),
+    queryFn: () => api.employees.list(1, 1),
   });
 
-  const pendingLeavesQuery = useQuery({
-    queryKey: ["leave", "pending"],
-    queryFn: api.getPendingLeaves,
+  const pendingLeaveQuery = useQuery({
+    queryKey: qk.leave.pending,
+    queryFn: api.leave.getPending,
   });
 
-  const notificationsQuery = useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: api.getUnreadCount,
+  const notifStatsQuery = useQuery({
+    queryKey: qk.notifications.stats,
+    queryFn: api.notifications.getStats,
   });
 
   const subscriptionQuery = useQuery({
-    queryKey: ["billing", "subscription"],
-    queryFn: api.getSubscription,
+    queryKey: qk.billing.subscription,
+    queryFn: api.billing.getSubscription,
     retry: 0,
   });
 
   const featuresQuery = useQuery({
-    queryKey: ["features"],
-    queryFn: api.getFeatures,
+    queryKey: qk.features.all,
+    queryFn: api.features.list,
   });
 
-  const employeeItems = employeesQuery.data?.items ?? [];
-  const chartData = Object.values(
-    employeeItems.reduce<Record<string, { department: string; count: number }>>((acc, employee) => {
-      if (!acc[employee.department]) {
-        acc[employee.department] = { department: employee.department, count: 0 };
-      }
-      acc[employee.department].count += 1;
-      return acc;
-    }, {}),
-  );
+  const totalEmployees = employeesQuery.data?.totalCount ?? 0;
+  const pendingLeaves = pendingLeaveQuery.data?.length ?? 0;
+  const notifStats = notifStatsQuery.data;
+  const sub = subscriptionQuery.data;
+  const seatPercent = sub ? Math.round((sub.usedSeats / sub.maxSeats) * 100) : 0;
+  const features = featuresQuery.data ?? [];
+
+  const leaveByType = pendingLeaveQuery.data
+    ? Object.entries(
+        pendingLeaveQuery.data.reduce<Record<string, number>>((acc, lr) => {
+          acc[lr.type] = (acc[lr.type] ?? 0) + 1;
+          return acc;
+        }, {}),
+      ).map(([name, value]) => ({ name, value }))
+    : [];
+
+  const notifBarData = notifStats
+    ? [
+        { name: "Sent", count: notifStats.sentCount },
+        { name: "Delivered", count: notifStats.deliveredCount },
+        { name: "Read", count: notifStats.readCount },
+        { name: "Unread", count: notifStats.unreadCount },
+        { name: "Failed", count: notifStats.failedCount },
+      ]
+    : [];
+
+  const isLoading =
+    employeesQuery.isFetching ||
+    pendingLeaveQuery.isFetching ||
+    notifStatsQuery.isFetching ||
+    subscriptionQuery.isFetching;
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2.5}>
       <PageHeader
-        title="HR Operations Dashboard"
-        subtitle="Real-time visibility into employees, leave, notifications, and plan utilization"
+        title="Dashboard"
+        subtitle={`Overview as of ${dayjs().format("MMMM D, YYYY")}`}
       />
 
-      {(employeesQuery.isLoading || pendingLeavesQuery.isLoading || notificationsQuery.isLoading) && (
-        <LinearProgress />
-      )}
+      {isLoading && <LinearProgress />}
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard
-            label="Employees"
-            value={employeesQuery.data?.totalCount ?? 0}
-            helper="Active records in tenant scope"
-            icon={<GroupsRoundedIcon color="primary" />}
+            label="Total Employees"
+            value={totalEmployees}
+            icon={<PeopleRoundedIcon color="primary" />}
           />
         </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard
             label="Pending Leave Requests"
-            value={pendingLeavesQuery.data?.length ?? 0}
-            helper="Need manager action"
-            icon={<EventBusyRoundedIcon color="secondary" />}
+            value={pendingLeaves}
+            icon={<EventNoteRoundedIcon color="warning" />}
           />
         </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard
             label="Unread Notifications"
-            value={notificationsQuery.data?.count ?? 0}
-            helper="Across channels"
-            icon={<NotificationsRoundedIcon color="primary" />}
+            value={notifStats?.unreadCount ?? 0}
+            icon={<NotificationsActiveRoundedIcon color="secondary" />}
           />
         </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard
-            label="Seat Usage"
-            value={
-              subscriptionQuery.data
-                ? `${subscriptionQuery.data.usedSeats}/${subscriptionQuery.data.maxSeats}`
-                : "N/A"
-            }
-            helper={subscriptionQuery.data?.status ?? "No subscription"}
-            icon={<TrendingUpRoundedIcon color="secondary" />}
+            label="Subscription Plan"
+            value={sub?.planName ?? "—"}
+            helper={sub ? `${sub.usedSeats}/${sub.maxSeats} seats` : undefined}
+            icon={<PaymentRoundedIcon color="success" />}
           />
         </Grid>
       </Grid>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Headcount by Department
+              <Typography variant="h6" mb={2}>
+                Pending Leave by Type
               </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="department" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#7C3AED" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {leaveByType.length === 0 ? (
+                <Stack alignItems="center" py={4}>
+                  <EventNoteRoundedIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+                  <Typography variant="body2" color="text.secondary" mt={1}>
+                    No pending leave requests
+                  </Typography>
+                </Stack>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={leaveByType}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {leaveByType.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Enabled Feature Flags
+              <Typography variant="h6" mb={2}>
+                Notification Overview
               </Typography>
-              <Stack spacing={1}>
-                {(featuresQuery.data ?? []).slice(0, 8).map((feature) => (
-                  <Typography key={feature} variant="body2" color="text.secondary">
-                    • {feature}
+              {notifBarData.length === 0 ? (
+                <Stack alignItems="center" py={4}>
+                  <NotificationsActiveRoundedIcon
+                    sx={{ fontSize: 40, color: "text.disabled" }}
+                  />
+                  <Typography variant="body2" color="text.secondary" mt={1}>
+                    No notification data available
                   </Typography>
-                ))}
-              </Stack>
+                </Stack>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={notifBarData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        {sub && (
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Typography variant="h6">Seat Usage</Typography>
+                  <StatusChip status={sub.status} />
+                </Stack>
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">
+                      {sub.usedSeats} of {sub.maxSeats} seats used
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {seatPercent}%
+                    </Typography>
+                  </Stack>
+                  <LinearProgress
+                    variant="determinate"
+                    value={seatPercent}
+                    color={seatPercent > 85 ? "error" : seatPercent > 60 ? "warning" : "primary"}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                  {sub.currentPeriodEnd && (
+                    <Typography variant="caption" color="text.disabled">
+                      Current period ends {dayjs(sub.currentPeriodEnd).format("MMM D, YYYY")}
+                    </Typography>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" mb={2}>
+                Feature Flags
+              </Typography>
+              {features.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No feature flags configured
+                </Typography>
+              ) : (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {features.map((f) => (
+                    <Chip
+                      key={f.name}
+                      icon={<BadgeRoundedIcon />}
+                      label={f.name}
+                      variant={f.isEnabled ? "filled" : "outlined"}
+                      color={f.isEnabled ? "success" : "default"}
+                      size="small"
+                    />
+                  ))}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {pendingLeaves > 0 && (
+          <Grid size={{ xs: 12 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" mb={2}>
+                  Recent Pending Leave Requests
+                </Typography>
+                <Stack spacing={1}>
+                  {(pendingLeaveQuery.data ?? []).slice(0, 5).map((lr) => (
+                    <Stack
+                      key={lr.id}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ py: 1, borderBottom: "1px solid", borderColor: "divider" }}
+                    >
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        <Chip label={lr.type} size="small" variant="outlined" />
+                        <Typography variant="body2">
+                          {dayjs(lr.startDate).format("MMM D")} —{" "}
+                          {dayjs(lr.endDate).format("MMM D, YYYY")}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          ({lr.durationDays} day{lr.durationDays === 1 ? "" : "s"})
+                        </Typography>
+                      </Stack>
+                      <StatusChip status={lr.status} />
+                    </Stack>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
     </Stack>
   );

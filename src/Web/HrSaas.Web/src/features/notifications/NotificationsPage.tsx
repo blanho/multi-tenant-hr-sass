@@ -1,104 +1,416 @@
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
+import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
+import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
+import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
+import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import {
-  Alert,
+  Box,
   Button,
   Card,
   CardContent,
   Chip,
+  Collapse,
+  Drawer,
+  FormControl,
+  FormControlLabel,
+  Grid,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
+  Switch,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import type { GridColDef, GridPaginationModel } from "@mui/x-data-grid";
+import { DataGrid } from "@mui/x-data-grid";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import { useCallback, useMemo, useState } from "react";
+import { EmptyState } from "../../components/common/EmptyState";
 import { PageHeader } from "../../components/common/PageHeader";
+import { StatCard } from "../../components/common/StatCard";
+import { StatusChip } from "../../components/common/StatusChip";
+import { useNotify } from "../../components/feedback/useNotify";
 import { api } from "../../lib/api";
-import { extractErrorMessage } from "../../lib/http";
-import type { NotificationDto } from "../../types/api";
+import { qk } from "../../lib/query-keys";
+import type {
+  NotificationCategory,
+  NotificationChannel,
+  NotificationDetailDto,
+  NotificationSummaryDto,
+} from "../../types/api";
+
+dayjs.extend(relativeTime);
+
+const CHANNELS: NotificationChannel[] = ["Email", "Sms", "InApp", "Push", "Webhook", "Slack"];
+const CATEGORIES: NotificationCategory[] = [
+  "System",
+  "Leave",
+  "Employee",
+  "Billing",
+  "Security",
+  "Tenant",
+  "General",
+];
+
+function NotificationsEmpty() {
+  return (
+    <EmptyState
+      title="No Notifications"
+      description="You are all caught up!"
+      icon={<NotificationsNoneRoundedIcon sx={{ fontSize: 48 }} />}
+    />
+  );
+}
 
 export function NotificationsPage() {
+  const notify = useNotify();
   const queryClient = useQueryClient();
 
-  const notificationsQuery = useQuery({
-    queryKey: ["notifications", 1, 50],
-    queryFn: () => api.getNotifications(1, 50),
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 20,
+  });
+  const [channel, setChannel] = useState<NotificationChannel | "">("");
+  const [category, setCategory] = useState<NotificationCategory | "">("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selected, setSelected] = useState<NotificationDetailDto | null>(null);
+
+  const filterParams = useMemo(
+    () => ({
+      page: paginationModel.page + 1,
+      pageSize: paginationModel.pageSize,
+      channel: channel || undefined,
+      category: category || undefined,
+      unreadOnly: unreadOnly || undefined,
+    }),
+    [paginationModel.page, paginationModel.pageSize, channel, category, unreadOnly],
+  );
+
+  const listQuery = useQuery({
+    queryKey: qk.notifications.list(filterParams),
+    queryFn: () => api.notifications.list(filterParams),
+  });
+
+  const statsQuery = useQuery({
+    queryKey: qk.notifications.stats,
+    queryFn: api.notifications.getStats,
   });
 
   const markReadMutation = useMutation({
-    mutationFn: api.markRead,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    mutationFn: api.notifications.markRead,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      notify.success("Marked as read");
+    },
+    onError: notify.error,
   });
 
-  const markAllMutation = useMutation({
-    mutationFn: api.markAllRead,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  const markAllReadMutation = useMutation({
+    mutationFn: api.notifications.markAllRead,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      notify.success("All notifications marked as read");
+    },
+    onError: notify.error,
   });
 
-  const columns = useMemo<GridColDef<NotificationDto>[]>(
+  const retryMutation = useMutation({
+    mutationFn: api.notifications.retry,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      notify.success("Notification queued for retry");
+    },
+    onError: notify.error,
+  });
+
+  const openDetail = useCallback(
+    async (id: string) => {
+      try {
+        const detail = await api.notifications.getById(id);
+        setSelected(detail);
+        setDetailOpen(true);
+      } catch {
+        notify.error("Failed to load notification details");
+      }
+    },
+    [notify],
+  );
+
+  const columns = useMemo<GridColDef<NotificationSummaryDto>[]>(
     () => [
-      { field: "subject", headerName: "Subject", flex: 1.4, minWidth: 220 },
-      { field: "channel", headerName: "Channel", width: 120 },
-      { field: "category", headerName: "Category", width: 140 },
-      {
-        field: "priority",
-        headerName: "Priority",
-        width: 120,
-        renderCell: ({ value }) => <Chip size="small" label={String(value)} />,
-      },
       {
         field: "status",
         headerName: "Status",
-        width: 120,
+        width: 110,
+        renderCell: ({ value }) => <StatusChip status={value} />,
+      },
+      {
+        field: "channel",
+        headerName: "Channel",
+        width: 100,
+        renderCell: ({ value }) => <Chip label={value} size="small" variant="outlined" />,
+      },
+      {
+        field: "category",
+        headerName: "Category",
+        width: 130,
+        renderCell: ({ value }) => (
+          <Typography variant="body2" noWrap>
+            {value}
+          </Typography>
+        ),
+      },
+      {
+        field: "subject",
+        headerName: "Subject",
+        flex: 1,
+        minWidth: 200,
+      },
+      {
+        field: "priority",
+        headerName: "Priority",
+        width: 100,
+        renderCell: ({ value }) => <Chip label={value} size="small" />,
+      },
+      {
+        field: "createdAt",
+        headerName: "Sent At",
+        width: 150,
+        valueFormatter: (value: string) => dayjs(value).fromNow(),
       },
       {
         field: "actions",
-        headerName: "Actions",
-        width: 140,
+        headerName: "",
+        width: 130,
         sortable: false,
+        filterable: false,
         renderCell: ({ row }) => (
-          <Button size="small" onClick={() => markReadMutation.mutate(row.id)}>
-            Mark Read
-          </Button>
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="View Details">
+              <IconButton size="small" onClick={() => void openDetail(row.id)}>
+                <MarkEmailReadRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {(row.status === "Delivered" || row.status === "Sent") && (
+              <Tooltip title="Mark Read">
+                <IconButton
+                  size="small"
+                  onClick={() => markReadMutation.mutate(row.id)}
+                >
+                  <CheckCircleRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {row.status === "Failed" && (
+              <Tooltip title="Retry">
+                <IconButton
+                  size="small"
+                  color="warning"
+                  onClick={() => retryMutation.mutate(row.id)}
+                >
+                  <ReplayRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
         ),
       },
     ],
-    [markReadMutation],
+    [openDetail, markReadMutation, retryMutation],
   );
+
+  const stats = statsQuery.data;
+  const rows = listQuery.data?.items ?? [];
+  const rowCount = listQuery.data?.totalCount ?? 0;
 
   return (
     <Stack spacing={2.5}>
       <PageHeader
         title="Notifications"
-        subtitle="Unified inbox across channels with status visibility and bulk actions"
+        subtitle="View, filter, and manage notification delivery"
         actions={
-          <Button variant="outlined" onClick={() => markAllMutation.mutate()}>
+          <Button
+            variant="outlined"
+            startIcon={<DoneAllRoundedIcon />}
+            onClick={() => markAllReadMutation.mutate()}
+            disabled={markAllReadMutation.isPending}
+          >
             Mark All Read
           </Button>
         }
       />
 
-      {(notificationsQuery.isError || markReadMutation.isError || markAllMutation.isError) && (
-        <Alert severity="error">
-          {extractErrorMessage(
-            notificationsQuery.error ?? markReadMutation.error ?? markAllMutation.error,
-          )}
-        </Alert>
+      {stats && (
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 6, md: 3 }}>
+            <StatCard label="Total" value={stats.totalCount} />
+          </Grid>
+          <Grid size={{ xs: 6, md: 3 }}>
+            <StatCard label="Delivered" value={stats.deliveredCount} />
+          </Grid>
+          <Grid size={{ xs: 6, md: 3 }}>
+            <StatCard label="Failed" value={stats.failedCount} />
+          </Grid>
+          <Grid size={{ xs: 6, md: 3 }}>
+            <StatCard label="Unread" value={stats.unreadCount} />
+          </Grid>
+        </Grid>
       )}
 
       <Card>
         <CardContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Total notifications: {notificationsQuery.data?.totalCount ?? 0}
-          </Typography>
-          <DataGrid
-            autoHeight
-            rows={notificationsQuery.data?.items ?? []}
-            columns={columns}
-            loading={notificationsQuery.isLoading}
-            disableRowSelectionOnClick
-            pageSizeOptions={[10, 20, 50]}
-          />
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+            <Typography variant="subtitle2" color="text.secondary">
+              {rowCount} notification{rowCount === 1 ? "" : "s"}
+            </Typography>
+            <Button
+              size="small"
+              startIcon={<FilterListRoundedIcon />}
+              onClick={() => setFiltersOpen((o) => !o)}
+            >
+              Filters
+            </Button>
+          </Stack>
+
+          <Collapse in={filtersOpen}>
+            <Stack direction="row" spacing={2} mb={2} alignItems="center">
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>Channel</InputLabel>
+                <Select
+                  value={channel}
+                  label="Channel"
+                  onChange={(e) => {
+                    setChannel(e.target.value as NotificationChannel | "");
+                    setPaginationModel((m) => ({ ...m, page: 0 }));
+                  }}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  {CHANNELS.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={category}
+                  label="Category"
+                  onChange={(e) => {
+                    setCategory(e.target.value as NotificationCategory | "");
+                    setPaginationModel((m) => ({ ...m, page: 0 }));
+                  }}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  {CATEGORIES.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={unreadOnly}
+                    onChange={(_, v) => {
+                      setUnreadOnly(v);
+                      setPaginationModel((m) => ({ ...m, page: 0 }));
+                    }}
+                  />
+                }
+                label="Unread Only"
+              />
+            </Stack>
+          </Collapse>
+
+          <Box sx={{ height: 520 }}>
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              rowCount={rowCount}
+              loading={listQuery.isFetching}
+              paginationMode="server"
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              pageSizeOptions={[10, 20, 50]}
+              disableRowSelectionOnClick
+              slots={{ noRowsOverlay: NotificationsEmpty }}
+              slotProps={{ noRowsOverlay: {} }}
+              density="compact"
+              sx={{ border: 0 }}
+            />
+          </Box>
         </CardContent>
       </Card>
+
+      <Drawer
+        anchor="right"
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        slotProps={{ paper: { sx: { width: 400, p: 3 } } }}
+      >
+        {selected && (
+          <Stack spacing={2}>
+            <Typography variant="h6">Notification Detail</Typography>
+            <StatusChip status={selected.status} />
+            <Typography variant="body2" color="text.secondary">
+              {selected.channel} &middot; {selected.category} &middot; {selected.priority}
+            </Typography>
+            {selected.subject && (
+              <Typography variant="body2">
+                <strong>Subject:</strong> {selected.subject}
+              </Typography>
+            )}
+            {selected.body && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1,
+                  bgcolor: "grey.50",
+                  whiteSpace: "pre-wrap",
+                  fontSize: 13,
+                }}
+              >
+                {selected.body}
+              </Box>
+            )}
+            {selected.deliveredAt && (
+              <Typography variant="caption" color="text.disabled">
+                Delivered {dayjs(selected.deliveredAt).format("MMM D, YYYY h:mm A")}
+              </Typography>
+            )}
+            {selected.readAt && (
+              <Typography variant="caption" color="text.disabled">
+                Read {dayjs(selected.readAt).format("MMM D, YYYY h:mm A")}
+              </Typography>
+            )}
+            {selected.retryCount > 0 && (
+              <Typography variant="caption" color="warning.main">
+                Retried {selected.retryCount} / {selected.maxRetries} times
+              </Typography>
+            )}
+            {selected.metadata && (
+              <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: "grey.100" }}>
+                <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap" }}>
+                  {selected.metadata}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+        )}
+      </Drawer>
     </Stack>
   );
 }

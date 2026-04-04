@@ -9,6 +9,7 @@ import { appTheme } from "./theme";
 import { AuthProvider } from "../features/auth/AuthContext";
 import { useAuth } from "../features/auth/auth-context";
 import { LoginPage } from "../features/auth/LoginPage";
+import { RegisterPage } from "../features/auth/RegisterPage";
 import { AppShell } from "../components/layout/AppShell";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { EmployeesPage } from "../features/employees/EmployeesPage";
@@ -16,6 +17,11 @@ import { LeavePage } from "../features/leave/LeavePage";
 import { TenantsPage } from "../features/tenants/TenantsPage";
 import { BillingPage } from "../features/billing/BillingPage";
 import { NotificationsPage } from "../features/notifications/NotificationsPage";
+import { NotificationPreferencesPage } from "../features/notifications/NotificationPreferencesPage";
+import { UsersPage } from "../features/users/UsersPage";
+import { RolesPage } from "../features/roles/RolesPage";
+import { AuditLogsPage } from "../features/audit/AuditLogsPage";
+import { FilesPage } from "../features/files/FilesPage";
 
 function ProtectedLayout() {
   const { isAuthenticated, isBootstrapping } = useAuth();
@@ -42,6 +48,7 @@ export function App() {
             <AuthProvider>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
                 <Route element={<ProtectedLayout />}>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/employees" element={<EmployeesPage />} />
@@ -49,6 +56,11 @@ export function App() {
                   <Route path="/tenants" element={<TenantsPage />} />
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/roles" element={<RolesPage />} />
+                  <Route path="/audit-logs" element={<AuditLogsPage />} />
+                  <Route path="/files" element={<FilesPage />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
