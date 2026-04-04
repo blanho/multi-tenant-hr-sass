@@ -93,6 +93,7 @@ services:
       Azure__BlobStorage__ConnectionString: ${AZURE_BLOB_CONNECTION_STRING:-}
       Azure__ApplicationInsights__ConnectionString: ${AZURE_APPINSIGHTS_CONNECTION_STRING:-}
       ConnectionStrings__AzureServiceBus: ${AZURE_SERVICEBUS_CONNECTION_STRING:-}
+      ConnectionStrings__AzureAppConfiguration: ${AZURE_APPCONFIGURATION_CONNECTION_STRING:-}
     depends_on:
       postgres:
         condition: service_healthy
