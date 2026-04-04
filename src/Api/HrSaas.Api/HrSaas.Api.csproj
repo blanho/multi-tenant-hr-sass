@@ -26,6 +26,8 @@
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.AzureApp" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" />
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
     <PackageReference Include="AspNetCore.HealthChecks.AzureServiceBus" />
     <PackageReference Include="AspNetCore.HealthChecks.AzureKeyVault" />
     <PackageReference Include="AspNetCore.HealthChecks.Azure.Storage.Blobs" />

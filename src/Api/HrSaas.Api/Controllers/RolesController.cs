@@ -3,6 +3,7 @@ using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Modules.Identity.Application.Commands;
 using HrSaas.Modules.Identity.Application.Queries;
 using HrSaas.Modules.Identity.Domain.Entities;
+using FeatureFlagKeys = HrSaas.SharedKernel.FeatureFlags.FeatureFlags;
 using HrSaas.TenantSdk;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -50,6 +51,7 @@ public sealed class RolesController(IMediator mediator, ITenantService tenantSer
 
     [HttpPost]
     [HasPermission(Permission.Roles.Create)]
+    [HrSaas.Api.Infrastructure.FeatureManagement.FeatureGate(FeatureFlagKeys.CustomRoles)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateRoleRequest request, CancellationToken ct)
@@ -66,6 +68,7 @@ public sealed class RolesController(IMediator mediator, ITenantService tenantSer
 
     [HttpPut("{roleId:guid}/permissions")]
     [HasPermission(Permission.Roles.Update)]
+    [HrSaas.Api.Infrastructure.FeatureManagement.FeatureGate(FeatureFlagKeys.CustomRoles)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdatePermissions(

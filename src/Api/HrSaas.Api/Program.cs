@@ -1,5 +1,6 @@
 using HrSaas.Api.Infrastructure.Authorization;
 using HrSaas.Api.Infrastructure.Azure;
+using HrSaas.Api.Infrastructure.FeatureManagement;
 using HrSaas.Api.Infrastructure.HealthChecks;
 using HrSaas.Api.Infrastructure.Idempotency;
 using HrSaas.Api.Infrastructure.Observability;
@@ -31,6 +32,7 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.AddAzureKeyVault();
+    builder.AddFeatureFlags();
 
     builder.Host.UseSerilog((ctx, lc) => lc
         .ReadFrom.Configuration(ctx.Configuration)
@@ -153,6 +155,7 @@ try
     }
 
     app.UseSerilogRequestLogging();
+    app.UseFeatureFlags();
     app.UseMiddleware<HrSaas.Api.Middleware.ExceptionMiddleware>();
 
     if (app.Environment.IsDevelopment())
