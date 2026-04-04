@@ -3,6 +3,7 @@ using HrSaas.Api.Infrastructure.Azure;
 using HrSaas.Api.Infrastructure.HealthChecks;
 using HrSaas.Api.Infrastructure.Idempotency;
 using HrSaas.Api.Infrastructure.Observability;
+using HrSaas.Api.Infrastructure.OpenApi;
 using HrSaas.Api.Infrastructure.RateLimiting;
 using HrSaas.Api.Infrastructure.Versioning;
 using HrSaas.EventBus;
@@ -20,6 +21,7 @@ using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -117,7 +119,7 @@ try
                   .AllowAnyHeader()));
 
     builder.Services.AddControllers();
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApiDocumentation();
 
     var app = builder.Build();
 
@@ -156,6 +158,12 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
+        app.MapScalarApiReference(opts =>
+        {
+            opts.WithTitle("HrSaas API")
+                .WithTheme(ScalarTheme.DeepSpace)
+                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+        });
     }
 
     app.UseHttpsRedirection();
