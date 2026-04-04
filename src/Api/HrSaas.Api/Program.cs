@@ -12,6 +12,7 @@ using HrSaas.EventBus;
 using HrSaas.JobScheduler;
 using HrSaas.Modules.Audit;
 using HrSaas.Modules.Billing;
+using HrSaas.Modules.Storage;
 using HrSaas.Modules.Employee;
 using HrSaas.Modules.Identity;
 using HrSaas.Modules.Leave;
@@ -72,6 +73,7 @@ try
     builder.Services.AddBillingModule(builder.Configuration);
     builder.Services.AddNotificationsModule(builder.Configuration);
     builder.Services.AddAuditModule(builder.Configuration);
+    builder.Services.AddStorageModule(builder.Configuration);
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
@@ -88,7 +90,7 @@ try
     builder.Services.AddStackExchangeRedisCache(opts =>
         opts.Configuration = builder.Configuration.GetConnectionString("Redis"));
 
-    builder.Services.AddAzureBlobStorage(builder.Configuration);
+    builder.Services.AddStorageProvider(builder.Configuration);
 
     var useAzureServiceBus = !string.IsNullOrWhiteSpace(
         builder.Configuration.GetConnectionString("AzureServiceBus"));
@@ -162,6 +164,9 @@ try
                 .Database.MigrateAsync();
             await scope.ServiceProvider
                 .GetRequiredService<HrSaas.Modules.Audit.Infrastructure.Persistence.AuditDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.Modules.Storage.Infrastructure.Persistence.StorageDbContext>()
                 .Database.MigrateAsync();
             logger.LogInformation("All database migrations applied successfully");
         }

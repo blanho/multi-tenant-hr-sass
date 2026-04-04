@@ -70,6 +70,23 @@ services:
       - "5341:5341"
       - "8080:80"
 
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: hrsaas-azurite
+    restart: unless-stopped
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite-data:/data
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --loose
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 10000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -91,6 +108,9 @@ services:
       Serilog__WriteTo__1__Args__serverUrl: http://seq:5341
       Azure__KeyVault__VaultUri: ${AZURE_KEYVAULT_VAULT_URI:-}
       Azure__BlobStorage__ConnectionString: ${AZURE_BLOB_CONNECTION_STRING:-}
+      Storage__Provider: ${STORAGE_PROVIDER:-AzureBlob}
+      Storage__AzureConnectionString: ${AZURE_BLOB_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1}
+      Storage__MaxFileSizeBytes: ${STORAGE_MAX_FILE_SIZE:-52428800}
       Azure__ApplicationInsights__ConnectionString: ${AZURE_APPINSIGHTS_CONNECTION_STRING:-}
       ConnectionStrings__AzureServiceBus: ${AZURE_SERVICEBUS_CONNECTION_STRING:-}
       ConnectionStrings__AzureAppConfiguration: ${AZURE_APPCONFIGURATION_CONNECTION_STRING:-}
@@ -100,6 +120,8 @@ services:
       rabbitmq:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      azurite:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health/live || exit 1"]
@@ -111,3 +133,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  azurite-data:

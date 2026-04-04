@@ -178,7 +178,7 @@ public sealed class AuditBehavior<TRequest, TResponse>(
 
         var prefixes = new[] { "Create", "Update", "Delete", "Get", "Activate", "Suspend",
             "Reinstate", "Upgrade", "Cancel", "Approve", "Reject", "Apply", "Assign",
-            "Send", "Retry", "Mark", "Register", "Login" };
+            "Send", "Retry", "Mark", "Register", "Login", "Upload", "Download", "Generate" };
 
         foreach (var prefix in prefixes)
         {

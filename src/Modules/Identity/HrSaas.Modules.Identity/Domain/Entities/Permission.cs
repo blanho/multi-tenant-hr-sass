@@ -71,6 +71,16 @@ public static class Permission
         public static readonly IReadOnlyList<string> All = [View, Send, Manage];
     }
 
+    public static class Files
+    {
+        public const string View = "files.view";
+        public const string Upload = "files.upload";
+        public const string Download = "files.download";
+        public const string Delete = "files.delete";
+
+        public static readonly IReadOnlyList<string> All = [View, Upload, Download, Delete];
+    }
+
     public static readonly IReadOnlyList<string> All =
     [
         ..Employees.All,
@@ -80,6 +90,7 @@ public static class Permission
         ..Users.All,
         ..Roles.All,
         ..Notifications.All,
+        ..Files.All,
     ];
 
     public static bool IsValid(string permission) => All.Contains(permission);

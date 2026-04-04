@@ -71,3 +71,6 @@ docker-compose.override.yml
 __pycache__/
 *.pyc
 *.pyo
+
+# ── Local file storage (dev) ─────────────────────────────────────────────────
+storage-data/

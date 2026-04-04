@@ -7,6 +7,9 @@ CREATE SCHEMA IF NOT EXISTS tenant;
 CREATE SCHEMA IF NOT EXISTS employee;
 CREATE SCHEMA IF NOT EXISTS leave;
 CREATE SCHEMA IF NOT EXISTS billing;
+CREATE SCHEMA IF NOT EXISTS notification;
+CREATE SCHEMA IF NOT EXISTS audit;
+CREATE SCHEMA IF NOT EXISTS storage;
 
 -- Outbox table for reliable event publishing (shared across modules)
 CREATE TABLE IF NOT EXISTS public.outbox_messages (

@@ -9,5 +9,6 @@ public enum AuditCategory
     Billing = 5,
     Notification = 6,
     Role = 7,
+    Storage = 8,
     System = 100
 }

@@ -21,5 +21,7 @@ public enum AuditAction
     Retry = 17,
     Export = 18,
     Import = 19,
+    Upload = 20,
+    Download = 21,
     SystemAction = 100
 }
