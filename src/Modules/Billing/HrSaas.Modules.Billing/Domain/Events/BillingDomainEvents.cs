@@ -18,3 +18,13 @@ public sealed record SubscriptionCancelledEvent(Guid TenantId, Guid Subscription
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
+
+public sealed record SubscriptionPastDueEvent(Guid TenantId, Guid SubscriptionId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}
+
+public sealed record SubscriptionExpiredEvent(Guid TenantId, Guid SubscriptionId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}

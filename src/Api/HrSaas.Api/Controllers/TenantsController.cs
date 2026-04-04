@@ -49,6 +49,16 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { tenantId = result.Value }, new { id = result.Value });
     }
 
+    [HttpPut("{tenantId:guid}")]
+    [HasPermission(Permission.Tenants.View)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid tenantId, [FromBody] UpdateTenantRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new UpdateTenantCommand(tenantId, request.Name, request.ContactEmail), ct);
+        return result.IsSuccess ? NoContent() : NotFound(result.Error);
+    }
+
     [HttpPost("{tenantId:guid}/suspend")]
     [HasPermission(Permission.Tenants.Suspend)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -91,3 +101,4 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
 
 public sealed record SuspendRequest(string Reason);
 public sealed record UpgradePlanRequest(HrSaas.Modules.Tenant.Domain.Entities.PlanType NewPlan);
+public sealed record UpdateTenantRequest(string Name, string ContactEmail);

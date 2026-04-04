@@ -87,9 +87,15 @@ public sealed class Subscription : BaseEntity
 
         Status = SubscriptionStatus.Expired;
         UpdatedAt = DateTime.UtcNow;
+        AddDomainEvent(new SubscriptionExpiredEvent(TenantId, Id));
     }
 
-    public void MarkPastDue() { Status = SubscriptionStatus.PastDue; UpdatedAt = DateTime.UtcNow; }
+    public void MarkPastDue()
+    {
+        Status = SubscriptionStatus.PastDue;
+        UpdatedAt = DateTime.UtcNow;
+        AddDomainEvent(new SubscriptionPastDueEvent(TenantId, Id));
+    }
 
     public bool CanAddSeat() => UsedSeats < MaxSeats;
 

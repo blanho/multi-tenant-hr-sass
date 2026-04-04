@@ -40,6 +40,36 @@ public sealed class CreateTenantCommandHandler(ITenantRepository repo) : IReques
     }
 }
 
+[Auditable(AuditAction.Update, AuditCategory.Tenant, Severity = AuditSeverity.Medium)]
+public sealed record UpdateTenantCommand(Guid TenantId, string Name, string ContactEmail) : ICommand;
+
+public sealed class UpdateTenantCommandValidator : AbstractValidator<UpdateTenantCommand>
+{
+    public UpdateTenantCommandValidator()
+    {
+        RuleFor(x => x.TenantId).NotEmpty();
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.ContactEmail).NotEmpty().EmailAddress().MaximumLength(254);
+    }
+}
+
+public sealed class UpdateTenantCommandHandler(ITenantRepository repo) : IRequestHandler<UpdateTenantCommand, Result>
+{
+    public async Task<Result> Handle(UpdateTenantCommand request, CancellationToken cancellationToken)
+    {
+        var tenant = await repo.GetByIdAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return Result.Failure("Tenant not found.", "NOT_FOUND");
+        }
+
+        tenant.UpdateDetails(request.Name, request.ContactEmail);
+        repo.Update(tenant);
+        await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
+    }
+}
+
 [Auditable(AuditAction.Suspend, AuditCategory.Tenant, Severity = AuditSeverity.Critical)]
 public sealed record SuspendTenantCommand(Guid TenantId, string Reason) : ICommand;
 

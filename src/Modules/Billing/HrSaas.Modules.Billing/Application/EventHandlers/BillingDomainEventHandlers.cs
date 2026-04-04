@@ -69,3 +69,22 @@ public sealed class SubscriptionCancelledEventHandler(
             ct).ConfigureAwait(false);
     }
 }
+
+public sealed class SubscriptionPastDueEventHandler(
+    IEventBus eventBus,
+    ILogger<SubscriptionPastDueEventHandler> logger)
+    : INotificationHandler<SubscriptionPastDueEvent>
+{
+    public async Task Handle(SubscriptionPastDueEvent notification, CancellationToken ct)
+    {
+        logger.LogInformation(
+            "Subscription {SubscriptionId} is past due for tenant {TenantId}. Publishing integration event.",
+            notification.SubscriptionId, notification.TenantId);
+
+        await eventBus.PublishAsync(
+            new SubscriptionPastDueIntegrationEvent(
+                notification.TenantId,
+                notification.SubscriptionId),
+            ct).ConfigureAwait(false);
+    }
+}

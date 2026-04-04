@@ -36,3 +36,10 @@ public sealed record EmployeeDeletedEvent(
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
+
+public sealed record EmployeeReinstatedEvent(
+    Guid TenantId,
+    Guid EmployeeId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}

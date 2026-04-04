@@ -53,3 +53,25 @@ public sealed class GetPendingLeavesQueryHandler(ILeaveRepository repo) : IReque
         return Result<IReadOnlyList<LeaveRequestDto>>.Success(dtos);
     }
 }
+
+public sealed record GetLeaveBalanceQuery(Guid TenantId, Guid EmployeeId, int? Year = null) : IQuery<LeaveBalanceDto>;
+
+public sealed class GetLeaveBalanceQueryHandler(ILeaveBalanceRepository balanceRepo) : IRequestHandler<GetLeaveBalanceQuery, Result<LeaveBalanceDto>>
+{
+    public async Task<Result<LeaveBalanceDto>> Handle(GetLeaveBalanceQuery request, CancellationToken cancellationToken)
+    {
+        var year = request.Year ?? DateTime.UtcNow.Year;
+        var balance = await balanceRepo
+            .GetAsync(request.TenantId, request.EmployeeId, year, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (balance is null)
+            return Result<LeaveBalanceDto>.Failure($"No leave balance found for year {year}.", "NOT_FOUND");
+
+        return Result<LeaveBalanceDto>.Success(new LeaveBalanceDto(
+            balance.Id, balance.EmployeeId, balance.Year,
+            balance.AnnualAllowance, balance.SickAllowance,
+            balance.AnnualUsed, balance.SickUsed,
+            balance.AnnualRemaining, balance.SickRemaining));
+    }
+}

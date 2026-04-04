@@ -92,3 +92,23 @@ public sealed class EmployeeDeactivatedEventHandler(
         await eventBus.PublishAsync(integrationEvent, ct).ConfigureAwait(false);
     }
 }
+
+public sealed class EmployeeReinstatedEventHandler(
+    IEventBus eventBus,
+    ILogger<EmployeeReinstatedEventHandler> logger)
+    : INotificationHandler<EmployeeReinstatedEvent>
+{
+    public async Task Handle(EmployeeReinstatedEvent notification, CancellationToken ct)
+    {
+        logger.LogInformation(
+            "Employee {EmployeeId} reinstated for tenant {TenantId}. Publishing integration event.",
+            notification.EmployeeId,
+            notification.TenantId);
+
+        var integrationEvent = new EmployeeReinstatedIntegrationEvent(
+            notification.TenantId,
+            notification.EmployeeId);
+
+        await eventBus.PublishAsync(integrationEvent, ct).ConfigureAwait(false);
+    }
+}

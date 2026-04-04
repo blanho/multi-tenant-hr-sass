@@ -54,6 +54,15 @@ public sealed class Tenant : BaseEntity
         Touch();
     }
 
+    public void UpdateDetails(string name, string contactEmail)
+    {
+        Guard.NotNullOrWhiteSpace(name, nameof(name));
+        Guard.NotNullOrWhiteSpace(contactEmail, nameof(contactEmail));
+        Name = name;
+        ContactEmail = contactEmail.ToLowerInvariant();
+        Touch();
+    }
+
     public void Upgrade(PlanType newPlan)
     {
         if (newPlan <= Plan)

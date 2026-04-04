@@ -85,9 +85,9 @@ public sealed class LeaveRequest : BaseEntity
     {
         Guard.NotEmpty(cancelledByEmployeeId, nameof(cancelledByEmployeeId));
 
-        if (Status == LeaveStatus.Approved || Status == LeaveStatus.Rejected)
+        if (Status == LeaveStatus.Rejected)
         {
-            throw new DomainException("Cannot cancel an already decided leave request.");
+            throw new DomainException("Cannot cancel an already rejected leave request.");
         }
 
         if (Status == LeaveStatus.Cancelled)
@@ -95,9 +95,10 @@ public sealed class LeaveRequest : BaseEntity
             throw new DomainException("Leave request is already cancelled.");
         }
 
+        var wasApproved = Status == LeaveStatus.Approved;
         Status = LeaveStatus.Cancelled;
         Touch();
-        AddDomainEvent(new LeaveCancelledEvent(TenantId, Id, EmployeeId, cancelledByEmployeeId));
+        AddDomainEvent(new LeaveCancelledEvent(TenantId, Id, EmployeeId, cancelledByEmployeeId, wasApproved, GetDurationDays(), Type.ToString()));
     }
 
     public int GetDurationDays() => (int)(EndDate - StartDate).TotalDays + 1;

@@ -54,4 +54,10 @@ public sealed class LeaveBalance : BaseEntity
         AnnualUsed = Math.Max(0, AnnualUsed - days);
         Touch();
     }
+
+    public void RestoreSick(int days)
+    {
+        SickUsed = Math.Max(0, SickUsed - days);
+        Touch();
+    }
 }

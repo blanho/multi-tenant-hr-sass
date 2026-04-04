@@ -79,6 +79,7 @@ public sealed class Employee : BaseEntity
 
         IsActive = true;
         Touch();
+        AddDomainEvent(new EmployeeReinstatedEvent(TenantId, Id));
     }
 
     public override void Delete()

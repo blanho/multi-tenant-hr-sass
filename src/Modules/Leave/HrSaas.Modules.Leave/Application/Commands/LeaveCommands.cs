@@ -29,10 +29,33 @@ public sealed class ApplyLeaveCommandValidator : AbstractValidator<ApplyLeaveCom
     }
 }
 
-public sealed class ApplyLeaveCommandHandler(ILeaveRepository repo) : IRequestHandler<ApplyLeaveCommand, Result<Guid>>
+public sealed class ApplyLeaveCommandHandler(
+    ILeaveRepository repo,
+    ILeaveBalanceRepository balanceRepo) : IRequestHandler<ApplyLeaveCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(ApplyLeaveCommand request, CancellationToken cancellationToken)
     {
+        var durationDays = (int)(request.EndDate - request.StartDate).TotalDays + 1;
+
+        if (request.Type is LeaveType.Annual or LeaveType.Sick)
+        {
+            var balance = await balanceRepo
+                .GetAsync(request.TenantId, request.EmployeeId, request.StartDate.Year, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (balance is null)
+                return Result<Guid>.Failure("No leave balance found for this year. Contact your administrator.", "NO_BALANCE");
+
+            var remaining = request.Type == LeaveType.Annual
+                ? balance.AnnualRemaining
+                : balance.SickRemaining;
+
+            if (durationDays > remaining)
+                return Result<Guid>.Failure(
+                    $"Insufficient {request.Type} leave balance. Remaining: {remaining} days, Requested: {durationDays} days.",
+                    "INSUFFICIENT_BALANCE");
+        }
+
         var leave = LeaveRequest.Apply(request.TenantId, request.EmployeeId, request.Type, request.StartDate, request.EndDate, request.Reason);
         await repo.AddAsync(leave, cancellationToken).ConfigureAwait(false);
         await repo.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -53,7 +76,9 @@ public sealed class ApproveLeaveCommandValidator : AbstractValidator<ApproveLeav
     }
 }
 
-public sealed class ApproveLeaveCommandHandler(ILeaveRepository repo) : IRequestHandler<ApproveLeaveCommand, Result>
+public sealed class ApproveLeaveCommandHandler(
+    ILeaveRepository repo,
+    ILeaveBalanceRepository balanceRepo) : IRequestHandler<ApproveLeaveCommand, Result>
 {
     public async Task<Result> Handle(ApproveLeaveCommand request, CancellationToken cancellationToken)
     {
@@ -70,6 +95,30 @@ public sealed class ApproveLeaveCommandHandler(ILeaveRepository repo) : IRequest
         catch (SharedKernel.Exceptions.DomainException ex)
         {
             return Result.Failure(ex.Message, "INVALID_STATE");
+        }
+
+        if (leave.Type is LeaveType.Annual or LeaveType.Sick)
+        {
+            var balance = await balanceRepo
+                .GetAsync(request.TenantId, leave.EmployeeId, leave.StartDate.Year, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (balance is not null)
+            {
+                try
+                {
+                    if (leave.Type == LeaveType.Annual)
+                        balance.DeductAnnual(leave.GetDurationDays());
+                    else
+                        balance.DeductSick(leave.GetDurationDays());
+
+                    balanceRepo.Update(balance);
+                }
+                catch (SharedKernel.Exceptions.DomainException ex)
+                {
+                    return Result.Failure(ex.Message, "INSUFFICIENT_BALANCE");
+                }
+            }
         }
 
         repo.Update(leave);
@@ -130,7 +179,9 @@ public sealed class CancelLeaveCommandValidator : AbstractValidator<CancelLeaveC
     }
 }
 
-public sealed class CancelLeaveCommandHandler(ILeaveRepository repo) : IRequestHandler<CancelLeaveCommand, Result>
+public sealed class CancelLeaveCommandHandler(
+    ILeaveRepository repo,
+    ILeaveBalanceRepository balanceRepo) : IRequestHandler<CancelLeaveCommand, Result>
 {
     public async Task<Result> Handle(CancelLeaveCommand request, CancellationToken cancellationToken)
     {
@@ -145,6 +196,8 @@ public sealed class CancelLeaveCommandHandler(ILeaveRepository repo) : IRequestH
             return Result.Failure("Only the owner can cancel their leave request.", "FORBIDDEN");
         }
 
+        var wasApproved = leave.Status == LeaveStatus.Approved;
+
         try
         {
             leave.Cancel(request.EmployeeId);
@@ -152,6 +205,23 @@ public sealed class CancelLeaveCommandHandler(ILeaveRepository repo) : IRequestH
         catch (SharedKernel.Exceptions.DomainException ex)
         {
             return Result.Failure(ex.Message, "INVALID_STATE");
+        }
+
+        if (wasApproved && leave.Type is LeaveType.Annual or LeaveType.Sick)
+        {
+            var balance = await balanceRepo
+                .GetAsync(request.TenantId, leave.EmployeeId, leave.StartDate.Year, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (balance is not null)
+            {
+                if (leave.Type == LeaveType.Annual)
+                    balance.RestoreAnnual(leave.GetDurationDays());
+                else
+                    balance.RestoreSick(leave.GetDurationDays());
+
+                balanceRepo.Update(balance);
+            }
         }
 
         repo.Update(leave);

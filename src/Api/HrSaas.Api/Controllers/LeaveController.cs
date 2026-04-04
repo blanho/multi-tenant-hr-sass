@@ -28,6 +28,16 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
         return Ok(result.Value);
     }
 
+    [HttpGet("balance/{employeeId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetBalance(Guid employeeId, [FromQuery] int? year, CancellationToken ct)
+    {
+        var tenantId = tenantService.GetCurrentTenantId();
+        var result = await mediator.Send(new GetLeaveBalanceQuery(tenantId, employeeId, year), ct);
+        return result.IsSuccess ? Ok(result.Value) : NotFound(result.Error);
+    }
+
     [HttpGet("{leaveId:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
