@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
-import { useNotify } from "@/components/feedback/useNotify";
-import type { ApplyLeavePayload } from "@/types/api";
+import { useNotify } from "@/hooks/useNotify";
+import { leaveApi } from "./api";
+import type { ApplyLeavePayload } from "./types";
 
 export function usePendingLeave() {
   return useQuery({
     queryKey: qk.leave.pending,
-    queryFn: api.leave.getPending,
+    queryFn: leaveApi.getPending,
   });
 }
 
 export function useLeaveBalance(employeeId: string | null, year: number) {
   return useQuery({
     queryKey: qk.leave.balance(employeeId ?? "", year),
-    queryFn: () => api.leave.getBalance(employeeId ?? "", year),
+    queryFn: () => leaveApi.getBalance(employeeId ?? "", year),
     enabled: !!employeeId,
   });
 }
@@ -22,7 +22,7 @@ export function useLeaveBalance(employeeId: string | null, year: number) {
 export function useLeaveHistory(employeeId: string | null, year: number) {
   return useQuery({
     queryKey: qk.leave.byEmployee(employeeId ?? "", year),
-    queryFn: () => api.leave.getByEmployee(employeeId ?? "", year),
+    queryFn: () => leaveApi.getByEmployee(employeeId ?? "", year),
     enabled: !!employeeId,
   });
 }
@@ -32,7 +32,7 @@ export function useApplyLeave(onDone: () => void) {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: (payload: ApplyLeavePayload) => api.leave.apply(payload),
+    mutationFn: (payload: ApplyLeavePayload) => leaveApi.apply(payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.leave.all });
       onDone();
@@ -47,7 +47,7 @@ export function useApproveLeave() {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.leave.approve,
+    mutationFn: leaveApi.approve,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.leave.all });
       notify.success("Leave approved");
@@ -62,7 +62,7 @@ export function useRejectLeave(onDone: () => void) {
 
   return useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
-      api.leave.reject(id, note),
+      leaveApi.reject(id, note),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.leave.all });
       onDone();
@@ -77,7 +77,7 @@ export function useCancelLeave() {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.leave.cancel,
+    mutationFn: leaveApi.cancel,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.leave.all });
       notify.success("Leave cancelled");

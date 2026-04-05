@@ -1,11 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
-import { useNotify } from "@/components/feedback/useNotify";
-import type {
-  NotificationChannel,
-  NotificationCategory,
-} from "@/types/api";
+import { useNotify } from "@/hooks/useNotify";
+import type { NotificationChannel, NotificationCategory } from "@/types/shared";
+import { notificationsApi } from "./api";
 
 export function useNotificationList(params: {
   page: number;
@@ -16,14 +13,14 @@ export function useNotificationList(params: {
 }) {
   return useQuery({
     queryKey: qk.notifications.list(params),
-    queryFn: () => api.notifications.list(params),
+    queryFn: () => notificationsApi.list(params),
   });
 }
 
 export function useNotificationStats() {
   return useQuery({
     queryKey: qk.notifications.stats,
-    queryFn: api.notifications.getStats,
+    queryFn: notificationsApi.getStats,
   });
 }
 
@@ -32,7 +29,7 @@ export function useMarkRead() {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.notifications.markRead,
+    mutationFn: notificationsApi.markRead,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["notifications"] });
       notify.success("Marked as read");
@@ -46,7 +43,7 @@ export function useMarkAllRead() {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.notifications.markAllRead,
+    mutationFn: notificationsApi.markAllRead,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["notifications"] });
       notify.success("All notifications marked as read");
@@ -60,7 +57,7 @@ export function useRetryNotification() {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.notifications.retry,
+    mutationFn: notificationsApi.retry,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["notifications"] });
       notify.success("Notification queued for retry");
@@ -74,7 +71,7 @@ export function useSendNotification(onDone: () => void) {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.notifications.create,
+    mutationFn: notificationsApi.create,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["notifications"] });
       onDone();

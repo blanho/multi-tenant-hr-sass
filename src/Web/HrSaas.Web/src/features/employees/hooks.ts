@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
-import { useNotify } from "@/components/feedback/useNotify";
-import type { CreateEmployeePayload, UpdateEmployeePayload } from "@/types/api";
+import { useNotify } from "@/hooks/useNotify";
+import { employeesApi } from "./api";
+import type { CreateEmployeePayload, UpdateEmployeePayload } from "./types";
 
 export function useEmployeeList(page: number, pageSize: number, department?: string) {
   return useQuery({
     queryKey: qk.employees.list(page, pageSize, department),
-    queryFn: () => api.employees.list(page, pageSize, department),
+    queryFn: () => employeesApi.list(page, pageSize, department),
   });
 }
 
 export function useEmployeeDetail(id: string) {
   return useQuery({
     queryKey: qk.employees.detail(id),
-    queryFn: () => api.employees.getById(id),
+    queryFn: () => employeesApi.getById(id),
     enabled: !!id,
   });
 }
@@ -24,7 +24,7 @@ export function useCreateEmployee(onDone: () => void) {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: (payload: CreateEmployeePayload) => api.employees.create(payload),
+    mutationFn: (payload: CreateEmployeePayload) => employeesApi.create(payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.employees.all });
       onDone();
@@ -40,7 +40,7 @@ export function useUpdateEmployee(onDone: () => void) {
 
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateEmployeePayload }) =>
-      api.employees.update(id, payload),
+      employeesApi.update(id, payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.employees.all });
       onDone();
@@ -55,7 +55,7 @@ export function useDeleteEmployee() {
   const notify = useNotify();
 
   return useMutation({
-    mutationFn: api.employees.delete,
+    mutationFn: employeesApi.delete,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.employees.all });
       notify.success("Employee deleted");
