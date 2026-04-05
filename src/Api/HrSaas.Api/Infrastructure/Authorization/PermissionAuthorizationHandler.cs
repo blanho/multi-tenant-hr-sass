@@ -12,7 +12,7 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
     {
         var permissions = context.User.FindAll(PermissionClaimType);
 
-        if (permissions.Any(p => p.Value == requirement.Permission))
+        if (permissions.Any(p => p.Value == "*" || p.Value == requirement.Permission))
         {
             context.Succeed(requirement);
         }
