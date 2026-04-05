@@ -14,177 +14,149 @@ A **production-grade, multi-tenant SaaS HR management platform** built with .NET
 
 ## Table of Contents
 
-- [Architecture Overview](#-architecture-overview)
-- [System Architecture Diagram](#-system-architecture-diagram)
-- [Clean Architecture Layers](#-clean-architecture-layers)
-- [Module Breakdown](#-module-breakdown)
-- [Multi-Tenancy Design](#-multi-tenancy-design)
-- [CQRS & Event-Driven Architecture](#-cqrs--event-driven-architecture)
-- [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Quick Start](#-quick-start)
-- [API Reference](#-api-reference)
-- [Authentication & Authorization](#-authentication--authorization)
-- [Infrastructure & Deployment](#-infrastructure--deployment)
-- [CI/CD Pipeline](#-cicd-pipeline)
-- [Observability](#-observability)
-- [Feature Flags](#-feature-flags)
-- [Testing Strategy](#-testing-strategy)
-- [Documentation](#-documentation)
-- [Roadmap](#-roadmap)
+- [Architecture Overview](#architecture-overview)
+- [System Architecture Diagram](#system-architecture-diagram)
+- [Clean Architecture Layers](#clean-architecture-layers)
+- [Module Breakdown](#module-breakdown)
+- [Multi-Tenancy Design](#multi-tenancy-design)
+- [CQRS & Event-Driven Architecture](#cqrs--event-driven-architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [Authentication & Authorization](#authentication--authorization)
+- [Infrastructure & Deployment](#infrastructure--deployment)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Observability](#observability)
+- [Feature Flags](#feature-flags)
+- [Testing Strategy](#testing-strategy)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENTS                                            │
-│                    React 19 SPA  ·  Mobile Apps  ·  API Consumers               │
-└──────────────────────────────┬──────────────────────────────────────────────────┘
-                               │ HTTPS
-                               ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         YARP API GATEWAY                                        │
-│                 (Reverse Proxy · Rate Limiting · Routing)                        │
-└──────────────────────────────┬──────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        HrSaas.Api  (Unified Host)                               │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                     MIDDLEWARE PIPELINE                                   │   │
-│  │  ForwardedHeaders → Compression → Serilog → FeatureFlags → Exception    │   │
-│  │  → CORS → Auth → RateLimiter → TenantMiddleware → Idempotency          │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                     13 API CONTROLLERS                                    │   │
-│  │  Auth · Users · Roles · Tenants · Employees · Leave · Billing            │   │
-│  │  Files · Notifications · NotificationPrefs · NotificationTemplates       │   │
-│  │  AuditLogs · Features                                                    │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                     MediatR PIPELINE                                      │   │
-│  │          LoggingBehavior → ValidationBehavior → AuditBehavior            │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                          FEATURE MODULES                                        │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐     │
-│  │ Identity │ │  Tenant  │ │ Employee │ │  Leave   │ │     Billing      │     │
-│  │  Module  │ │  Module  │ │  Module  │ │  Module  │ │     Module       │     │
-│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤ ├──────────────────┤     │
-│  │   JWT    │ │  Plans   │ │   CRUD   │ │ Workflow │ │ Subscriptions    │     │
-│  │   RBAC   │ │  Status  │ │  Import  │ │ Approval │ │ Invoicing        │     │
-│  │  Roles   │ │  Config  │ │  Search  │ │ Balance  │ │ Seat Tracking    │     │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────────┘     │
-│  ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐                │
-│  │  Notifications   │ │      Audit       │ │     Storage      │                │
-│  │     Module       │ │     Module       │ │     Module       │                │
-│  ├──────────────────┤ ├──────────────────┤ ├──────────────────┤                │
-│  │ Email / SignalR  │ │  Change Tracking │ │ Azure Blob /     │                │
-│  │ Templates        │ │  Event Sourcing  │ │ Local Filesystem │                │
-│  │ Preferences      │ │  Query & Export  │ │ Presigned URLs   │                │
-│  └──────────────────┘ └──────────────────┘ └──────────────────┘                │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                       BUILDING BLOCKS (Shared Infra)                            │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐  │
-│  │ SharedKernel │ │   EventBus   │ │  TenantSdk   │ │     Contracts        │  │
-│  │  BaseEntity  │ │  MassTransit │ │  Middleware   │ │  Integration Events  │  │
-│  │  Result<T>   │ │   Outbox     │ │  ITenantSvc  │ │  Shared DTOs         │  │
-│  │  CQRS Intf.  │ │   Consumers  │ │  Resolver    │ │                      │  │
-│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────────┘  │
-│  ┌──────────────────────────┐ ┌──────────────────────────┐                     │
-│  │   Infrastructure.Storage │ │      JobScheduler        │                     │
-│  │   Azure Blob Provider    │ │      Hangfire            │                     │
-│  │   Local File Provider    │ │      Recurring Jobs      │                     │
-│  └──────────────────────────┘ └──────────────────────────┘                     │
-└─────────────────────────────────────────────────────────────────────────────────┘
-         │              │              │              │              │
-         ▼              ▼              ▼              ▼              ▼
-    PostgreSQL 16   RabbitMQ 3.13   Redis 7     Azure Blob    Seq / OTLP
-    (8 schemas)     (or Azure SB)   (Cache)     (or Local)    (Telemetry)
+```mermaid
+graph TB
+    subgraph Clients
+        SPA["React 19 SPA"]
+        Mobile["Mobile Apps"]
+        API_C["API Consumers"]
+    end
+
+    subgraph Gateway
+        YARP["YARP API Gateway<br/>Reverse Proxy / Rate Limiting / Routing"]
+    end
+
+    subgraph Host["HrSaas.Api — Unified Host"]
+        direction TB
+        MW["Middleware Pipeline<br/>ForwardedHeaders → Compression → Serilog → FeatureFlags<br/>→ Exception → CORS → Auth → RateLimiter → Tenant → Idempotency"]
+        CTRL["13 API Controllers<br/>Auth / Users / Roles / Tenants / Employees / Leave / Billing<br/>Files / Notifications / NotifPrefs / Templates / AuditLogs / Features"]
+        PIPE["MediatR Pipeline<br/>LoggingBehavior → ValidationBehavior → AuditBehavior"]
+        MW --> CTRL --> PIPE
+    end
+
+    subgraph Modules["Feature Modules"]
+        direction LR
+        Identity["Identity<br/>JWT / RBAC / Roles"]
+        Tenant["Tenant<br/>Plans / Status / Config"]
+        Employee["Employee<br/>CRUD / Import / Search"]
+        Leave["Leave<br/>Workflow / Approval / Balance"]
+        Billing["Billing<br/>Subscriptions / Invoicing / Seats"]
+        Notifications["Notifications<br/>Email / SignalR / Templates"]
+        Audit["Audit<br/>Change Tracking / Event Sourcing"]
+        Storage["Storage<br/>Azure Blob / Local / Presigned URLs"]
+    end
+
+    subgraph Blocks["Building Blocks — Shared Infra"]
+        direction LR
+        SK["SharedKernel<br/>BaseEntity / Result / CQRS"]
+        EB["EventBus<br/>MassTransit / Outbox"]
+        TS["TenantSdk<br/>Middleware / ITenantSvc"]
+        CT["Contracts<br/>Integration Events / DTOs"]
+        IS["Infrastructure.Storage<br/>Azure Blob / Local Provider"]
+        JS["JobScheduler<br/>Hangfire / Recurring Jobs"]
+    end
+
+    subgraph Infra["External Infrastructure"]
+        PG["PostgreSQL 16<br/>8 schemas"]
+        RMQ["RabbitMQ 3.13<br/>or Azure SB"]
+        Redis["Redis 7<br/>Cache"]
+        Blob["Azure Blob<br/>or Local"]
+        Seq["Seq / OTLP<br/>Telemetry"]
+    end
+
+    Clients -->|HTTPS| Gateway
+    Gateway --> Host
+    Host --> Modules
+    Modules --> Blocks
+    Blocks --> Infra
 ```
 
 ---
 
-## 🧅 Clean Architecture Layers
+## Clean Architecture Layers
 
 Each module follows strict **Clean Architecture** with enforced dependency rules:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        API LAYER                                 │
-│         Controllers · Middleware · DI Registration                │
-│         References: Application only                             │
-├─────────────────────────────────────────────────────────────────┤
-│                    APPLICATION LAYER                              │
-│   Commands · Queries · Handlers · DTOs · Validators · Interfaces │
-│   References: Domain only                                        │
-├─────────────────────────────────────────────────────────────────┤
-│                   INFRASTRUCTURE LAYER                            │
-│        EF Core · Repositories · External Services                │
-│        References: Application + Domain                          │
-├─────────────────────────────────────────────────────────────────┤
-│                      DOMAIN LAYER                                │
-│    Entities · Value Objects · Aggregates · Domain Events          │
-│    References: NOTHING (zero external dependencies)              │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+    columns 1
+    block:api["API Layer — Controllers / Middleware / DI Registration"]
+    end
+    block:app["Application Layer — Commands / Queries / Handlers / DTOs / Validators"]
+    end
+    block:infra["Infrastructure Layer — EF Core / Repositories / External Services"]
+    end
+    block:domain["Domain Layer — Entities / Value Objects / Aggregates / Domain Events"]
+    end
+
+    api --> app
+    app --> domain
+    infra --> app
+    infra --> domain
 ```
 
 **Hard Dependency Rules:**
-- ❌ Domain MUST NOT reference Application, Infrastructure, or API
-- ❌ Application MUST NOT reference Infrastructure or API
-- ❌ Modules MUST NOT reference each other directly
-- ✅ Cross-module communication via `IEventBus` or shared `Contracts`
-- ✅ Controllers call only `IMediator.Send()` / `IMediator.Publish()`
+- Domain MUST NOT reference Application, Infrastructure, or API
+- Application MUST NOT reference Infrastructure or API
+- Modules MUST NOT reference each other directly
+- Cross-module communication via `IEventBus` or shared `Contracts`
+- Controllers call only `IMediator.Send()` / `IMediator.Publish()`
 
 ---
 
-## 📦 Module Breakdown
+## Module Breakdown
 
 | Module | Responsibility | DB Schema | Extraction Ready |
 |--------|---------------|-----------|------------------|
-| **Identity** | Registration, login, JWT issuance, RBAC, roles & permissions | `identity` | ✅ High priority |
-| **Tenant** | Company CRUD, plan assignment, status management | `tenant` | ✅ Medium |
-| **Employee** | Employee lifecycle CRUD, bulk import, search | `employee` | ❌ Stays in monolith |
-| **Leave** | Leave application, approval workflow, balance tracking | `leave` | ❌ Stays in monolith |
-| **Billing** | Subscription plans, invoicing, seat tracking, payment hooks | `billing` | ✅ High priority |
-| **Notifications** | Email dispatch, SignalR real-time, templates, preferences | `notification` | ❌ Stays in monolith |
-| **Audit** | Change tracking, event sourcing, query & export | `audit` | ❌ Stays in monolith |
-| **Storage** | File upload/download, Azure Blob / Local, presigned URLs | `storage` | ❌ Stays in monolith |
+| **Identity** | Registration, login, JWT issuance, RBAC, roles & permissions | `identity` | Yes — High priority |
+| **Tenant** | Company CRUD, plan assignment, status management | `tenant` | Yes — Medium |
+| **Employee** | Employee lifecycle CRUD, bulk import, search | `employee` | No — Stays in monolith |
+| **Leave** | Leave application, approval workflow, balance tracking | `leave` | No — Stays in monolith |
+| **Billing** | Subscription plans, invoicing, seat tracking, payment hooks | `billing` | Yes — High priority |
+| **Notifications** | Email dispatch, SignalR real-time, templates, preferences | `notification` | No — Stays in monolith |
+| **Audit** | Change tracking, event sourcing, query & export | `audit` | No — Stays in monolith |
+| **Storage** | File upload/download, Azure Blob / Local, presigned URLs | `storage` | No — Stays in monolith |
 
 Each module owns its own `DbContext`, migrations, and schema — enforcing clear data boundaries for future microservice extraction.
 
 ---
 
-## 🔒 Multi-Tenancy Design
+## Multi-Tenancy Design
 
 This system uses the **Shared Database, Shared Schema** strategy with row-level isolation via `TenantId`:
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     HTTP REQUEST                              │
-└──────────────────────┬───────────────────────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│                  TenantMiddleware                              │
-│  1. Extract tenant_id from JWT claim (preferred)              │
-│  2. Fallback: X-Tenant-ID header                              │
-│  3. 401 Unauthorized if missing                               │
-└──────────────────────┬───────────────────────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│           ITenantService.SetCurrentTenant(tenantId)           │
-│                  TenantContext (scoped)                        │
-└──────────────────────┬───────────────────────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│              EF Core Global Query Filter                      │
-│    entity.TenantId == _currentTenantContext.TenantId          │
-│    entity.IsDeleted == false  (soft delete)                   │
-│                                                               │
-│    Applied automatically to EVERY query on EVERY table        │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["HTTP Request"] --> B["TenantMiddleware"]
+    B --> B1["1. Extract tenant_id from JWT claim"]
+    B --> B2["2. Fallback: X-Tenant-ID header"]
+    B --> B3["3. 401 Unauthorized if missing"]
+    B1 --> C["ITenantService.SetCurrentTenant(tenantId)<br/>TenantContext — scoped"]
+    B2 --> C
+    C --> D["EF Core Global Query Filter<br/>entity.TenantId == _currentTenantContext.TenantId<br/>entity.IsDeleted == false — soft delete<br/>Applied automatically to EVERY query on EVERY table"]
 ```
 
 Every aggregate root inherits from `BaseEntity` which includes:
@@ -196,58 +168,38 @@ Every aggregate root inherits from `BaseEntity` which includes:
 
 ---
 
-## ⚡ CQRS & Event-Driven Architecture
+## CQRS & Event-Driven Architecture
 
 ### Command/Query Separation
 
-```
-┌─────────────────┐     MediatR      ┌─────────────────────────────────┐
-│   Controller    │ ─── Send() ────→ │ Pipeline Behaviors              │
-│   POST /api/..  │                   │  → LoggingBehavior              │
-└─────────────────┘                   │  → ValidationBehavior (Fluent)  │
-                                      │  → AuditBehavior                │
-                                      │  → CommandHandler               │
-                                      └──────────┬──────────────────────┘
-                                                  │
-                                      ┌───────────▼───────────┐
-                                      │   Domain Operations    │
-                                      │   + Domain Events      │
-                                      │   + SaveChangesAsync   │
-                                      └───────────┬───────────┘
-                                                  │
-                                      ┌───────────▼───────────┐
-                                      │  DomainEventDispatcher │
-                                      │  (in-process handlers) │
-                                      └───────────┬───────────┘
-                                                  │
-                                      ┌───────────▼───────────┐
-                                      │  Integration Events    │
-                                      │  MassTransit → Outbox  │
-                                      │  → RabbitMQ / Azure SB │
-                                      └───────────────────────┘
+```mermaid
+flowchart LR
+    A["Controller<br/>POST /api/.."] -->|MediatR Send| B["Pipeline Behaviors"]
+    B --> B1["LoggingBehavior"]
+    B1 --> B2["ValidationBehavior<br/>FluentValidation"]
+    B2 --> B3["AuditBehavior"]
+    B3 --> C["CommandHandler"]
+    C --> D["Domain Operations<br/>+ Domain Events<br/>+ SaveChangesAsync"]
+    D --> E["DomainEventDispatcher<br/>in-process handlers"]
+    E --> F["Integration Events<br/>MassTransit → Outbox<br/>→ RabbitMQ / Azure SB"]
 ```
 
 ### Event Flow Example
 
-```
-Employee Created:
-  1. CreateEmployeeCommandHandler
-     └─→ employee.Create() raises EmployeeCreatedEvent (domain)
-  2. SaveChangesAsync()
-     └─→ DomainEventDispatcherInterceptor dispatches in-process
-  3. EmployeeCreatedEventHandler
-     └─→ publishes EmployeeCreatedIntegrationEvent → Outbox → Broker
-  4. Billing Consumer
-     └─→ increments seat count for tenant subscription
-  5. Audit Consumer
-     └─→ records the creation in audit log
-  6. Notification Consumer
-     └─→ sends welcome email / SignalR notification
+```mermaid
+flowchart TD
+    A["CreateEmployeeCommandHandler"] --> B["employee.Create raises<br/>EmployeeCreatedEvent — domain"]
+    B --> C["SaveChangesAsync"]
+    C --> D["DomainEventDispatcherInterceptor<br/>dispatches in-process"]
+    D --> E["EmployeeCreatedEventHandler<br/>publishes EmployeeCreatedIntegrationEvent<br/>→ Outbox → Broker"]
+    E --> F["Billing Consumer<br/>increments seat count"]
+    E --> G["Audit Consumer<br/>records creation in audit log"]
+    E --> H["Notification Consumer<br/>sends welcome email / SignalR"]
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 
@@ -300,7 +252,7 @@ Employee Created:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 multi-tenant-saas/
@@ -378,7 +330,7 @@ multi-tenant-saas/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -430,7 +382,7 @@ docker-compose -f docker-compose.yml -f docker-compose.override.yml up
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### Authentication
 ```http
@@ -517,7 +469,7 @@ GET    /health/ready                   # Readiness (DB, Redis, RabbitMQ, Storage
 
 ---
 
-## 🔐 Authentication & Authorization
+## Authentication & Authorization
 
 ### JWT Token Structure
 
@@ -534,23 +486,20 @@ GET    /health/ready                   # Readiness (DB, Redis, RabbitMQ, Storage
 
 ### Token Refresh Flow
 
-```
-┌──────────┐         ┌──────────┐         ┌──────────────────┐
-│  React   │ ──401──→│  Axios   │         │  /auth/refresh   │
-│   App    │         │Interceptor│ ──POST─→│  Validates JWT   │
-└──────────┘         │          │         │  Issues new pair  │
-                     │  Queue   │←─tokens─│                  │
-                     │ pending  │         └──────────────────┘
-                     │ requests │
-                     │  Retry   │──→ Original requests with new token
-                     └──────────┘
-```
+```mermaid
+sequenceDiagram
+    participant App as React App
+    participant Interceptor as Axios Interceptor
+    participant API as /auth/refresh
 
-The Axios interceptor automatically handles 401 responses by:
-1. Queuing all concurrent failed requests
-2. Refreshing the token pair via `/auth/refresh`
-3. Replaying all queued requests with the new access token
-4. Clearing the session only if refresh also fails
+    App->>Interceptor: Request fails with 401
+    Interceptor->>Interceptor: Queue all concurrent failed requests
+    Interceptor->>API: POST refresh token
+    API->>API: Validate refresh token and issue new pair
+    API-->>Interceptor: New access + refresh tokens
+    Interceptor->>Interceptor: Replay queued requests with new token
+    Note over Interceptor: If refresh also fails then clear session and redirect to login
+```
 
 ### Permission-Based Authorization
 
@@ -562,39 +511,46 @@ Role: Employee  → employees.view (self), leaves.view/create/cancel (self)
 
 ---
 
-## ☁️ Infrastructure & Deployment
+## Infrastructure & Deployment
 
 ### Azure Resources (Bicep IaC)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Azure Resource Group                         │
-│                                                                  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
-│  │  App Service     │  │ App Service Plan │  │  Staging Slot  │  │
-│  │  (.NET 9 Linux)  │  │  P1v3 (Prod)    │  │  (Blue-Green)  │  │
-│  │  Managed Identity│  │  S1 (Staging)   │  │                │  │
-│  │  Auto-Heal       │  │  B1 (Dev)       │  │                │  │
-│  └────────┬────────┘  └─────────────────┘  └────────────────┘  │
-│           │                                                      │
-│  ┌────────▼────────┐  ┌─────────────────┐  ┌────────────────┐  │
-│  │  PostgreSQL      │  │  Service Bus    │  │  Redis Cache   │  │
-│  │  Flexible Server │  │  Premium (Prod) │  │  Standard C1   │  │
-│  │  v16, HA, Geo    │  │  Standard (Dev) │  │  Basic C0(Dev) │  │
-│  └─────────────────┘  └─────────────────┘  └────────────────┘  │
-│                                                                  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
-│  │  Key Vault       │  │  Storage Acct   │  │  App Insights  │  │
-│  │  RBAC-enabled    │  │  Blob Storage   │  │  + Log         │  │
-│  │  Soft Delete     │  │  TLS 1.2        │  │  Analytics     │  │
-│  └─────────────────┘  └─────────────────┘  └────────────────┘  │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │  Autoscale (Prod): 2–10 instances                           ││
-│  │  Scale up: CPU > 70% or Memory > 80%                        ││
-│  │  Scale down: CPU < 25%                                      ││
-│  └─────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph RG["Azure Resource Group"]
+        direction TB
+        subgraph Compute
+            AppSvc["App Service<br/>.NET 9 Linux<br/>Managed Identity / Auto-Heal"]
+            Plan["App Service Plan<br/>P1v3 Prod / S1 Staging / B1 Dev"]
+            Slot["Staging Slot<br/>Blue-Green"]
+        end
+
+        subgraph Data
+            PG["PostgreSQL Flexible Server<br/>v16, HA, Geo-backup"]
+            SB["Service Bus<br/>Premium Prod / Standard Dev"]
+            RedisC["Redis Cache<br/>Standard C1 / Basic C0 Dev"]
+        end
+
+        subgraph Security
+            KV["Key Vault<br/>RBAC-enabled / Soft Delete"]
+            SA["Storage Account<br/>Blob Storage / TLS 1.2"]
+            AI["App Insights<br/>+ Log Analytics"]
+        end
+
+        subgraph Scaling
+            AS["Autoscale Prod<br/>2 to 10 instances<br/>Scale up: CPU above 70% or Memory above 80%<br/>Scale down: CPU below 25%"]
+        end
+    end
+
+    AppSvc --> PG
+    AppSvc --> SB
+    AppSvc --> RedisC
+    AppSvc --> KV
+    AppSvc --> SA
+    AppSvc --> AI
+    Plan --> AppSvc
+    Slot --> AppSvc
+    AS --> Plan
 ```
 
 ### Environment Configuration
@@ -607,25 +563,15 @@ Role: Employee  → employees.view (self), leaves.view/create/cancel (self)
 
 ---
 
-## 🔄 CI/CD Pipeline
+## CI/CD Pipeline
 
 ### GitHub Actions (Blue-Green Deployment)
 
-```
-┌──────────┐    ┌──────────┐    ┌──────────────┐    ┌──────────────┐
-│  Build   │───→│ Deploy   │───→│   Deploy     │───→│   Deploy     │
-│          │    │   Dev    │    │  Staging     │    │ Production   │
-│ .NET     │    │          │    │              │    │              │
-│ React    │    │ develop  │    │ main branch  │    │ After staging│
-│ Tests    │    │ branch   │    │              │    │              │
-│ Lint     │    │          │    │ Blue-Green:  │    │ Blue-Green:  │
-│ Format   │    │ Bicep    │    │ 1. Bicep     │    │ 1. Bicep     │
-│          │    │ Deploy   │    │ 2. Slot      │    │ 2. Slot      │
-│          │    │ App Svc  │    │ 3. Smoke     │    │ 3. Smoke     │
-│          │    │ Health ✓ │    │ 4. Swap      │    │ 4. Swap      │
-│          │    │          │    │ 5. Verify    │    │ 5. Verify    │
-│          │    │          │    │              │    │ 6. Rollback? │
-└──────────┘    └──────────┘    └──────────────┘    └──────────────┘
+```mermaid
+flowchart LR
+    A["Build<br/>.NET + React<br/>Tests / Lint / Format"] --> B["Deploy Dev<br/>develop branch<br/>Bicep Deploy<br/>App Service<br/>Health Check"]
+    B --> C["Deploy Staging<br/>main branch<br/>Blue-Green:<br/>1. Bicep<br/>2. Slot<br/>3. Smoke Test<br/>4. Swap<br/>5. Verify"]
+    C --> D["Deploy Production<br/>After staging<br/>Blue-Green:<br/>1. Bicep<br/>2. Slot<br/>3. Smoke Test<br/>4. Swap<br/>5. Verify<br/>6. Rollback?"]
 ```
 
 **Key Features:**
@@ -637,52 +583,45 @@ Role: Employee  → employees.view (self), leaves.view/create/cancel (self)
 
 ---
 
-## 📊 Observability
+## Observability
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                     Application                                    │
-│                                                                    │
-│  ┌────────────┐  ┌────────────────┐  ┌─────────────────────────┐ │
-│  │  Serilog   │  │ OpenTelemetry  │  │  AuditableEntity        │ │
-│  │  Structured│  │ Traces + Metrics│  │  Interceptor            │ │
-│  │  Logging   │  │ ASP.NET + HTTP │  │  Domain-level auditing  │ │
-│  │            │  │ + EF Core      │  │                         │ │
-│  └─────┬──────┘  └───────┬────────┘  └────────────┬────────────┘ │
-└────────┼─────────────────┼─────────────────────────┼──────────────┘
-         │                 │                         │
-         ▼                 ▼                         ▼
-    ┌─────────┐    ┌──────────────┐          ┌─────────────┐
-    │   Seq   │    │ OTLP Collector│          │  Audit DB   │
-    │ (Dev)   │    │  → Azure     │          │  (Postgres)  │
-    │         │    │  Monitor     │          │              │
-    └─────────┘    └──────────────┘          └─────────────┘
+```mermaid
+flowchart TD
+    subgraph App["Application"]
+        Serilog["Serilog<br/>Structured Logging"]
+        OTEL["OpenTelemetry<br/>Traces + Metrics<br/>ASP.NET + HTTP + EF Core"]
+        AuditInt["AuditableEntity Interceptor<br/>Domain-level auditing"]
+    end
+
+    Serilog --> Seq["Seq — Dev"]
+    OTEL --> Collector["OTLP Collector<br/>→ Azure Monitor"]
+    AuditInt --> AuditDB["Audit DB<br/>PostgreSQL"]
 ```
 
 Every log event is enriched with: `TenantId`, `UserId`, `CorrelationId`, `Environment`, `ThreadId`, `SpanId`.
 
 ---
 
-## 🚩 Feature Flags
+## Feature Flags
 
 Managed via `Microsoft.FeatureManagement`, configurable per environment:
 
 | Flag | Dev | Staging | Production |
 |------|-----|---------|------------|
-| `BulkEmployeeImport` | ✅ | ✅ | ❌ |
-| `AdvancedReporting` | ✅ | ✅ | ❌ |
-| `LeaveApprovalWorkflow` | ✅ | ✅ | ✅ |
-| `EmailNotifications` | ✅ | ✅ | ✅ |
-| `SlackIntegration` | ✅ | ✅ | ❌ |
-| `AuditLog` | ✅ | ✅ | ✅ |
-| `CustomRoles` | ✅ | ✅ | ❌ |
-| `MultiCurrencyBilling` | ❌ | ❌ | ❌ |
-| `EmployeeSelfService` | ✅ | ✅ | ✅ |
-| `ApiWebhooks` | ✅ | ✅ | ❌ |
+| `BulkEmployeeImport` | Yes | Yes | No |
+| `AdvancedReporting` | Yes | Yes | No |
+| `LeaveApprovalWorkflow` | Yes | Yes | Yes |
+| `EmailNotifications` | Yes | Yes | Yes |
+| `SlackIntegration` | Yes | Yes | No |
+| `AuditLog` | Yes | Yes | Yes |
+| `CustomRoles` | Yes | Yes | No |
+| `MultiCurrencyBilling` | No | No | No |
+| `EmployeeSelfService` | Yes | Yes | Yes |
+| `ApiWebhooks` | Yes | Yes | No |
 
 ---
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 | Layer | Test Type | Framework | Location |
 |-------|-----------|-----------|----------|
@@ -706,7 +645,7 @@ Multi-tenancy is validated in tests — seed data for Tenant A, assert Tenant B 
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -715,15 +654,15 @@ Multi-tenancy is validated in tests — seed data for Tenant A, assert Tenant B 
 | [ADR-001: Modular Monolith](docs/ADR/ADR-001-modular-monolith.md) | Why modular monolith over microservices |
 | [ADR-002: Multi-Tenancy](docs/ADR/ADR-002-multi-tenancy.md) | Shared DB with row-level isolation |
 | [ADR-003: CQRS + MediatR](docs/ADR/ADR-003-cqrs-mediatr.md) | Command/Query separation pattern |
-| [ADR-004: Event-Driven](docs/ADR/ADR-004-event-driven.md) | Domain events → Integration events |
-| [ADR-005: Microservice Extraction](docs/ADR/ADR-005-microservice-extraction.md) | Extraction strategy for Identity & Billing |
-| [Copilot Instructions](.github/copilot-instructions.md) | AI coding rules & conventions |
+| [ADR-004: Event-Driven](docs/ADR/ADR-004-event-driven.md) | Domain events to Integration events |
+| [ADR-005: Microservice Extraction](docs/ADR/ADR-005-microservice-extraction.md) | Extraction strategy for Identity and Billing |
+| [Copilot Instructions](.github/copilot-instructions.md) | AI coding rules and conventions |
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
-### Phase 1 — Modular Monolith ✅
+### Phase 1 — Modular Monolith (Complete)
 - [x] Multi-tenancy with EF Core global query filters
 - [x] JWT authentication with tenant claims and refresh tokens
 - [x] CQRS with MediatR + FluentValidation pipeline
@@ -757,6 +696,6 @@ Multi-tenancy is validated in tests — seed data for Tenant A, assert Tenant B 
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
