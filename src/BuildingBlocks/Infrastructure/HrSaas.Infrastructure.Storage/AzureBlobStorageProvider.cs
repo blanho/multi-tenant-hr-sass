@@ -1,9 +1,10 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
+using HrSaas.SharedKernel.Storage;
 using Microsoft.Extensions.Logging;
 
-namespace HrSaas.SharedKernel.Storage;
+namespace HrSaas.Infrastructure.Storage;
 
 public sealed class AzureBlobStorageProvider(
     BlobServiceClient blobServiceClient,

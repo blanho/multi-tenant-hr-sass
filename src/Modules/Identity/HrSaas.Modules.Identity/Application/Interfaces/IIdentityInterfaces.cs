@@ -21,6 +21,6 @@ public interface IPasswordHasher
 public interface IJwtTokenService
 {
     string GenerateAccessToken(Guid userId, Guid tenantId, string email, string role, IReadOnlyList<string> permissions);
-    string GenerateRefreshToken();
+    string GenerateRefreshToken(Guid userId, Guid tenantId, string role);
     (Guid UserId, Guid TenantId, string Role) ValidateRefreshToken(string token);
 }

@@ -20,6 +20,7 @@ namespace HrSaas.Api.Controllers;
 public sealed class LeaveController(IMediator mediator, ITenantService tenantService) : ControllerBase
 {
     [HttpGet("employee/{employeeId:guid}")]
+    [HasPermission(Permission.Leaves.View)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetByEmployee(Guid employeeId, CancellationToken ct)
     {
@@ -29,6 +30,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpGet("balance/{employeeId:guid}")]
+    [HasPermission(Permission.Leaves.View)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetBalance(Guid employeeId, [FromQuery] int? year, CancellationToken ct)
@@ -39,6 +41,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpGet("{leaveId:guid}")]
+    [HasPermission(Permission.Leaves.View)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid leaveId, CancellationToken ct)
@@ -59,6 +62,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpPost]
+    [HasPermission(Permission.Leaves.Create)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Apply([FromBody] ApplyLeaveCommand command, CancellationToken ct)
@@ -109,6 +113,7 @@ public sealed class LeaveController(IMediator mediator, ITenantService tenantSer
     }
 
     [HttpDelete("{leaveId:guid}")]
+    [HasPermission(Permission.Leaves.Cancel)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

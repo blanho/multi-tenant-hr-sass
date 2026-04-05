@@ -1,8 +1,9 @@
 using Azure.Storage.Blobs;
+using HrSaas.SharedKernel.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HrSaas.SharedKernel.Storage;
+namespace HrSaas.Infrastructure.Storage;
 
 public static class StorageProviderExtensions
 {

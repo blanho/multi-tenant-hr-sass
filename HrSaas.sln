@@ -57,6 +57,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Storage", "Storage", "{2C57
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.Modules.Storage", "src\Modules\Storage\HrSaas.Modules.Storage\HrSaas.Modules.Storage.csproj", "{E83D21A8-22EF-465C-BFB9-82A0FAA74FEF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HrSaas.Infrastructure.Storage", "src\BuildingBlocks\Infrastructure\HrSaas.Infrastructure.Storage\HrSaas.Infrastructure.Storage.csproj", "{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -283,6 +285,18 @@ Global
 		{E83D21A8-22EF-465C-BFB9-82A0FAA74FEF}.Release|x64.Build.0 = Release|Any CPU
 		{E83D21A8-22EF-465C-BFB9-82A0FAA74FEF}.Release|x86.ActiveCfg = Release|Any CPU
 		{E83D21A8-22EF-465C-BFB9-82A0FAA74FEF}.Release|x86.Build.0 = Release|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Debug|x64.Build.0 = Debug|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Debug|x86.Build.0 = Debug|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Release|x64.ActiveCfg = Release|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Release|x64.Build.0 = Release|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Release|x86.ActiveCfg = Release|Any CPU
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -312,5 +326,6 @@ Global
 		{18C7A20E-322F-4A1C-9B7C-2D581BF4EC6E} = {CA0C52B8-E67A-D3C0-825B-DB4E39A84DF0}
 		{2C579E28-C502-E781-8240-D7088143E7BB} = {33333333-3333-3333-3333-333333333333}
 		{E83D21A8-22EF-465C-BFB9-82A0FAA74FEF} = {2C579E28-C502-E781-8240-D7088143E7BB}
+		{09EBC619-A4C8-4F9A-BC9D-3EAFAA2D7DD6} = {22222222-2222-2222-2222-222222222222}
 	EndGlobalSection
 EndGlobal

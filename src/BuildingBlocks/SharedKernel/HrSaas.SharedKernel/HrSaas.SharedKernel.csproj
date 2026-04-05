@@ -8,8 +8,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
-    <PackageReference Include="Azure.Storage.Blobs" />
-    <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Microsoft.FeatureManagement" />
   </ItemGroup>
 </Project>

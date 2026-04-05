@@ -37,9 +37,10 @@ public static class Permission
     public static class Billing
     {
         public const string View = "billing.view";
+        public const string Manage = "billing.manage";
         public const string Cancel = "billing.cancel";
 
-        public static readonly IReadOnlyList<string> All = [View, Cancel];
+        public static readonly IReadOnlyList<string> All = [View, Manage, Cancel];
     }
 
     public static class Users

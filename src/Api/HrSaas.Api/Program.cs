@@ -21,7 +21,7 @@ using HrSaas.Modules.Tenant;
 using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.Behaviors;
 using HrSaas.SharedKernel.Interceptors;
-using HrSaas.SharedKernel.Storage;
+using HrSaas.Infrastructure.Storage;
 using HrSaas.TenantSdk;
 using MassTransit;
 using MediatR;
@@ -128,11 +128,15 @@ try
     builder.Services.AddTenantRateLimiting();
     builder.Services.AddModuleHealthChecks(builder.Configuration);
 
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? ["http://localhost:3000", "http://localhost:5173"];
+
     builder.Services.AddCors(options =>
         options.AddPolicy("AllowAll", policy =>
-            policy.AllowAnyOrigin()
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyMethod()
-                  .AllowAnyHeader()));
+                  .AllowAnyHeader()
+                  .AllowCredentials()));
 
     builder.Services.AddSignalR();
     builder.Services.AddResponseCompression(opts => opts.EnableForHttps = true);

@@ -52,6 +52,10 @@ export function getAccessToken(): string | null {
   return getSession()?.accessToken ?? null;
 }
 
+export function getRefreshToken(): string | null {
+  return getSession()?.refreshToken ?? null;
+}
+
 export function getTenantId(): string | null {
   const session = getSession();
   if (!session) return null;

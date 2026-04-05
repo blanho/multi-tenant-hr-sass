@@ -1,7 +1,8 @@
+using HrSaas.SharedKernel.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace HrSaas.SharedKernel.Storage;
+namespace HrSaas.Infrastructure.Storage;
 
 public sealed class LocalFileStorageProvider(
     IOptions<StorageProviderOptions> options,

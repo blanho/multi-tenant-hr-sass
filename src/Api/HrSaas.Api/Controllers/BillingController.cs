@@ -30,7 +30,7 @@ public sealed class BillingController(IMediator mediator, ITenantService tenantS
     }
 
     [HttpPost("subscription/create-free")]
-    [HasPermission(Permission.Billing.View)]
+    [HasPermission(Permission.Billing.Manage)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateFree(CancellationToken ct)
@@ -43,7 +43,7 @@ public sealed class BillingController(IMediator mediator, ITenantService tenantS
     }
 
     [HttpPost("subscription/{subscriptionId:guid}/activate")]
-    [HasPermission(Permission.Billing.View)]
+    [HasPermission(Permission.Billing.Manage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Activate(

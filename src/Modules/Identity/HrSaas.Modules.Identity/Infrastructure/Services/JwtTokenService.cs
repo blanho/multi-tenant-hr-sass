@@ -48,7 +48,29 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public string GenerateRefreshToken() => Guid.NewGuid().ToString("N");
+    public string GenerateRefreshToken(Guid userId, Guid tenantId, string role)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opts.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new("tenant_id", tenantId.ToString()),
+            new(ClaimTypes.Role, role),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("token_type", "refresh"),
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _opts.Issuer,
+            audience: _opts.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddDays(7),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 
     public (Guid UserId, Guid TenantId, string Role) ValidateRefreshToken(string token)
     {

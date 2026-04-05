@@ -44,6 +44,7 @@
     <ProjectReference Include="..\..\Modules\Audit\HrSaas.Modules.Audit\HrSaas.Modules.Audit.csproj" />
     <ProjectReference Include="..\..\Modules\Storage\HrSaas.Modules.Storage\HrSaas.Modules.Storage.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\EventBus\HrSaas.EventBus\HrSaas.EventBus.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Infrastructure\HrSaas.Infrastructure.Storage\HrSaas.Infrastructure.Storage.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\JobScheduler\HrSaas.JobScheduler\HrSaas.JobScheduler.csproj" />
   </ItemGroup>
 </Project>

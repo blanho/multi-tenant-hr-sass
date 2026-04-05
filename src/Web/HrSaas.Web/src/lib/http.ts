@@ -1,5 +1,6 @@
-import axios from "axios";
-import { clearSession, getAccessToken, getTenantId } from "./session";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { clearSession, getAccessToken, getRefreshToken, getTenantId, setSession } from "./session";
+import type { AuthTokenDto } from "../types/api";
 
 const baseURL =
   import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:5000/api/v1";
@@ -8,6 +9,23 @@ export const http = axios.create({
   baseURL,
   timeout: 30000,
 });
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach((prom) => {
+    if (token) {
+      prom.resolve(token);
+    } else {
+      prom.reject(error);
+    }
+  });
+  failedQueue = [];
+}
 
 http.interceptors.request.use((config) => {
   const token = getAccessToken();
@@ -26,12 +44,51 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      clearSession();
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      if (error.response?.status === 401) {
+        clearSession();
+      }
+      throw error;
     }
 
-    return Promise.reject(error);
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      clearSession();
+      throw error;
+    }
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return http(originalRequest);
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const { data } = await axios.post<AuthTokenDto>(
+        `${baseURL}/auth/refresh`,
+        { refreshToken },
+      );
+
+      setSession(data);
+      processQueue(null, data.accessToken);
+      originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+      return http(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      clearSession();
+      throw refreshError;
+    } finally {
+      isRefreshing = false;
+    }
   },
 );
 

@@ -236,6 +236,7 @@ resource slotConfigNames 'Microsoft.Web/sites/config@2023-12-01' = if (useSlots)
   name: 'slotConfigNames'
   properties: {
     appSettingNames: [
+      'ASPNETCORE_ENVIRONMENT'
       'Database__AutoMigrate'
     ]
   }

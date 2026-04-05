@@ -69,6 +69,7 @@ public sealed class TenantMiddleware(
         return path.StartsWith("/health", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/api/v1/auth/login", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/api/v1/auth/register", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/v1/auth/refresh", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase)

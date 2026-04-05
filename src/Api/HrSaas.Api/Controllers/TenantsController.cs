@@ -50,7 +50,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{tenantId:guid}")]
-    [HasPermission(Permission.Tenants.View)]
+    [HasPermission(Permission.Tenants.Create)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid tenantId, [FromBody] UpdateTenantRequest request, CancellationToken ct)

@@ -47,6 +47,6 @@ USER appuser
 COPY --from=publish /app/publish .
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8080/health/live || exit 1
+    CMD wget -qO- http://localhost:8080/health/live || exit 1
 
 ENTRYPOINT ["dotnet", "HrSaas.Api.dll"]

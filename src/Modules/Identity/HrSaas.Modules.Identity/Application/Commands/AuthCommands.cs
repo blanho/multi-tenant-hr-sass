@@ -52,7 +52,7 @@ public sealed class RegisterCommandHandler(
 
         var accessToken = jwtTokenService.GenerateAccessToken(
             user.Id, user.TenantId, user.Email.Value, role.Name, role.Permissions);
-        var refreshToken = jwtTokenService.GenerateRefreshToken();
+        var refreshToken = jwtTokenService.GenerateRefreshToken(user.Id, user.TenantId, role.Name);
 
         return Result<AuthTokenDto>.Success(new AuthTokenDto(
             accessToken, refreshToken, DateTime.UtcNow.AddHours(1),
@@ -94,7 +94,7 @@ public sealed class LoginCommandHandler(
 
         var accessToken = jwtTokenService.GenerateAccessToken(
             user.Id, user.TenantId, user.Email.Value, role.Name, role.Permissions);
-        var refreshToken = jwtTokenService.GenerateRefreshToken();
+        var refreshToken = jwtTokenService.GenerateRefreshToken(user.Id, user.TenantId, role.Name);
 
         return Result<AuthTokenDto>.Success(new AuthTokenDto(
             accessToken, refreshToken, DateTime.UtcNow.AddHours(1),

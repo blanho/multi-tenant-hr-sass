@@ -10,6 +10,10 @@ export const authApi = {
     const { data } = await http.post<AuthTokenDto>("/auth/login", payload);
     return data;
   },
+  refresh: async (refreshToken: string) => {
+    const { data } = await http.post<AuthTokenDto>("/auth/refresh", { refreshToken });
+    return data;
+  },
   getMe: async () => {
     const { data } = await http.get<Record<string, string>>("/auth/me");
     return data;

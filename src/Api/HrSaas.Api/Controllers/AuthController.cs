@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using HrSaas.Modules.Identity.Application.Commands;
+using HrSaas.Modules.Identity.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,6 +35,16 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
+    {
+        var result = await mediator.Send(command, ct);
+        return result.IsSuccess ? Ok(result.Value) : Unauthorized(result.Error);
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenCommand command, CancellationToken ct)
     {
         var result = await mediator.Send(command, ct);
         return result.IsSuccess ? Ok(result.Value) : Unauthorized(result.Error);
