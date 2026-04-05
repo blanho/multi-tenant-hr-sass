@@ -6,7 +6,6 @@ import {
   CardContent,
   Chip,
   Collapse,
-  Drawer,
   FormControl,
   IconButton,
   InputLabel,
@@ -22,33 +21,14 @@ import { DataGrid } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
-import { EmptyState } from "../../components/common/EmptyState";
-import { PageHeader } from "../../components/common/PageHeader";
-import { StatusChip } from "../../components/common/StatusChip";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-import type {
-  AuditAction,
-  AuditEntityType,
-  AuditLogDetailDto,
-  AuditLogSummaryDto,
-  AuditSeverity,
-} from "../../types/api";
-
-const ACTIONS: AuditAction[] = [
-  "Created", "Updated", "Deleted", "Viewed", "Login", "Logout",
-  "PasswordChanged", "RoleAssigned", "RoleRemoved", "PermissionGranted",
-  "PermissionRevoked", "TenantCreated", "TenantSuspended", "TenantReinstated",
-  "PlanUpgraded", "SubscriptionCreated", "SubscriptionCancelled",
-  "LeaveApplied", "LeaveApproved", "LeaveRejected", "LeaveCancelled",
-];
-
-const ENTITY_TYPES: AuditEntityType[] = [
-  "User", "Employee", "Leave", "Tenant", "Role", "Subscription", "Notification", "File",
-];
-
-const SEVERITIES: AuditSeverity[] = ["Info", "Warning", "Error"];
+import { EmptyState, PageHeader, StatusChip } from "@/components";
+import { useNotify } from "@/hooks/useNotify";
+import { qk } from "@/lib/query-keys";
+import { auditLogsApi } from "./api";
+import type { AuditAction, AuditEntityType, AuditSeverity } from "@/types/shared";
+import type { AuditLogDetailDto, AuditLogSummaryDto } from "./types";
+import { ACTIONS, ENTITY_TYPES, SEVERITIES } from "./constants";
+import { AuditDetailDrawer } from "./AuditDetailDrawer";
 
 function AuditEmpty() {
   return (
@@ -91,13 +71,13 @@ export function AuditLogsPage() {
 
   const listQuery = useQuery({
     queryKey: qk.auditLogs.list(filterParams),
-    queryFn: () => api.auditLogs.list(filterParams),
+    queryFn: () => auditLogsApi.list(filterParams),
   });
 
   const openDetail = useCallback(
     async (id: string) => {
       try {
-        const detail = await api.auditLogs.getById(id);
+        const detail = await auditLogsApi.getById(id);
         setSelected(detail);
         setDetailOpen(true);
       } catch {
@@ -121,17 +101,8 @@ export function AuditLogsPage() {
         width: 160,
         renderCell: ({ value }) => <Chip label={value} size="small" variant="outlined" />,
       },
-      {
-        field: "entityType",
-        headerName: "Entity Type",
-        width: 120,
-      },
-      {
-        field: "description",
-        headerName: "Description",
-        flex: 1,
-        minWidth: 250,
-      },
+      { field: "entityType", headerName: "Entity Type", width: 120 },
+      { field: "description", headerName: "Description", flex: 1, minWidth: 250 },
       {
         field: "userEmail",
         headerName: "User",
@@ -279,90 +250,11 @@ export function AuditLogsPage() {
         </CardContent>
       </Card>
 
-      <Drawer
-        anchor="right"
+      <AuditDetailDrawer
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        slotProps={{ paper: { sx: { width: 440, p: 3 } } }}
-      >
-        {selected && (
-          <Stack spacing={2}>
-            <Typography variant="h6">Audit Log Detail</Typography>
-            <StatusChip status={selected.severity} />
-            <Stack spacing={0.5}>
-              <DetailRow label="Action" value={selected.action} />
-              <DetailRow label="Entity" value={`${selected.entityType} / ${selected.entityId}`} />
-              <DetailRow label="Description" value={selected.description} />
-              <DetailRow label="User" value={selected.userEmail ?? "System"} />
-              <DetailRow label="IP Address" value={selected.ipAddress ?? "—"} />
-              <DetailRow label="Duration" value={`${selected.durationMs}ms`} />
-              <DetailRow
-                label="Timestamp"
-                value={dayjs(selected.createdAt).format("MMM D, YYYY h:mm:ss A")}
-              />
-              {selected.requestMethod && selected.requestPath && (
-                <DetailRow
-                  label="Request"
-                  value={`${selected.requestMethod} ${selected.requestPath}`}
-                />
-              )}
-              {selected.correlationId && (
-                <DetailRow label="Correlation ID" value={selected.correlationId} />
-              )}
-            </Stack>
-
-            {selected.oldValues && (
-              <JsonBlock title="Old Values" json={selected.oldValues} />
-            )}
-            {selected.newValues && (
-              <JsonBlock title="New Values" json={selected.newValues} />
-            )}
-            {selected.additionalData && (
-              <JsonBlock title="Additional Data" json={selected.additionalData} />
-            )}
-          </Stack>
-        )}
-      </Drawer>
-    </Stack>
-  );
-}
-
-function DetailRow({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <Stack direction="row" justifyContent="space-between" py={0.5}>
-      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 100 }}>
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        fontWeight={500}
-        sx={{ maxWidth: 280, wordBreak: "break-all", textAlign: "right" }}
-      >
-        {value}
-      </Typography>
-    </Stack>
-  );
-}
-
-function JsonBlock({ title, json }: Readonly<{ title: string; json: string }>) {
-  return (
-    <Stack spacing={0.5}>
-      <Typography variant="subtitle2">{title}</Typography>
-      <Box
-        sx={{
-          p: 1.5,
-          borderRadius: 1,
-          bgcolor: "grey.50",
-          fontFamily: "monospace",
-          fontSize: 12,
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-all",
-          maxHeight: 200,
-          overflow: "auto",
-        }}
-      >
-        {json}
-      </Box>
+        log={selected}
+      />
     </Stack>
   );
 }

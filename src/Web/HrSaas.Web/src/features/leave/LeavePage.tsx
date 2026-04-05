@@ -6,38 +6,33 @@ import {
   Card,
   CardContent,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Grid,
   LinearProgress,
-  MenuItem,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
-import { EmptyState } from "../../components/common/EmptyState";
-import { PageHeader } from "../../components/common/PageHeader";
-import { StatusChip } from "../../components/common/StatusChip";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
+import { EmptyState, PageHeader, StatusChip } from "@/components";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query-keys";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../auth/auth-context";
-import type { LeaveRequestDto, LeaveType } from "../../types/api";
-
-const LEAVE_TYPES: LeaveType[] = [
-  "Annual",
-  "Sick",
-  "Maternity",
-  "Paternity",
-  "Unpaid",
-  "Emergency",
-];
+import type { LeaveRequestDto } from "./types";
+import {
+  useApplyLeave,
+  useApproveLeave,
+  useCancelLeave,
+  useLeaveBalance,
+  useLeaveHistory,
+  usePendingLeave,
+  useRejectLeave,
+} from "./hooks";
+import { ApplyLeaveDialog } from "./ApplyLeaveDialog";
+import { RejectLeaveDialog } from "./RejectLeaveDialog";
+import type { ApplyLeaveForm } from "./schemas";
 
 function PendingEmpty() {
   return (
@@ -59,81 +54,23 @@ function HistoryEmpty() {
 
 export function LeavePage() {
   const { tenantId } = useAuth();
-  const notify = useNotify();
-  const queryClient = useQueryClient();
-
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState<string | null>(null);
-  const [rejectNote, setRejectNote] = useState("");
-
-  const [leaveType, setLeaveType] = useState<LeaveType>("Annual");
-  const [startDate, setStartDate] = useState(dayjs().add(1, "day").format("YYYY-MM-DD"));
-  const [endDate, setEndDate] = useState(dayjs().add(1, "day").format("YYYY-MM-DD"));
-  const [reason, setReason] = useState("");
 
   const employeesQuery = useQuery({
     queryKey: qk.employees.list(1, 200),
     queryFn: () => api.employees.list(1, 200),
   });
 
-  const pendingQuery = useQuery({
-    queryKey: qk.leave.pending,
-    queryFn: api.leave.getPending,
-  });
+  const pendingQuery = usePendingLeave();
+  const balanceQuery = useLeaveBalance(selectedEmployeeId, dayjs().year());
+  const historyQuery = useLeaveHistory(selectedEmployeeId, dayjs().year());
 
-  const balanceQuery = useQuery({
-    queryKey: qk.leave.balance(selectedEmployeeId ?? "", dayjs().year()),
-    queryFn: () => api.leave.getBalance(selectedEmployeeId ?? "", dayjs().year()),
-    enabled: !!selectedEmployeeId,
-  });
-
-  const historyQuery = useQuery({
-    queryKey: qk.leave.byEmployee(selectedEmployeeId ?? "", dayjs().year()),
-    queryFn: () => api.leave.getByEmployee(selectedEmployeeId ?? "", dayjs().year()),
-    enabled: !!selectedEmployeeId,
-  });
-
-  const applyMutation = useMutation({
-    mutationFn: api.leave.apply,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.leave.all });
-      setApplyOpen(false);
-      setReason("");
-      notify.success("Leave request submitted");
-    },
-    onError: notify.error,
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: api.leave.approve,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.leave.all });
-      notify.success("Leave approved");
-    },
-    onError: notify.error,
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: ({ id, note }: { id: string; note: string }) =>
-      api.leave.reject(id, note),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.leave.all });
-      setRejectOpen(null);
-      setRejectNote("");
-      notify.success("Leave rejected");
-    },
-    onError: notify.error,
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: api.leave.cancel,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.leave.all });
-      notify.success("Leave cancelled");
-    },
-    onError: notify.error,
-  });
+  const applyMutation = useApplyLeave(() => setApplyOpen(false));
+  const approveMutation = useApproveLeave();
+  const rejectMutation = useRejectLeave(() => setRejectOpen(null));
+  const cancelMutation = useCancelLeave();
 
   const employees = useMemo(
     () => employeesQuery.data?.items ?? [],
@@ -233,11 +170,7 @@ export function LeavePage() {
         sortable: false,
         renderCell: ({ row }) =>
           row.status === "Pending" ? (
-            <Button
-              size="small"
-              color="error"
-              onClick={() => cancelMutation.mutate(row.id)}
-            >
+            <Button size="small" color="error" onClick={() => cancelMutation.mutate(row.id)}>
               Cancel
             </Button>
           ) : null,
@@ -352,116 +285,23 @@ export function LeavePage() {
         </Card>
       )}
 
-      <Dialog open={applyOpen} onClose={() => setApplyOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Apply for Leave</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <Autocomplete
-              options={employees}
-              getOptionLabel={(o) => `${o.name} (${o.department})`}
-              onChange={(_, v) => setSelectedEmployeeId(v?.id ?? null)}
-              renderInput={(params) => (
-                <TextField {...params} label="Employee" required />
-              )}
-            />
-            <TextField
-              select
-              label="Leave Type"
-              value={leaveType}
-              onChange={(e) => setLeaveType(e.target.value as LeaveType)}
-            >
-              {LEAVE_TYPES.map((t) => (
-                <MenuItem key={t} value={t}>
-                  {t}
-                </MenuItem>
-              ))}
-            </TextField>
-            <Stack direction="row" spacing={2}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Start Date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-              <TextField
-                fullWidth
-                type="date"
-                label="End Date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-            </Stack>
-            <TextField
-              multiline
-              minRows={3}
-              label="Reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              required
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setApplyOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={
-              !selectedEmployeeId || !tenantId || !reason || applyMutation.isPending
-            }
-            onClick={() => {
-              if (!selectedEmployeeId || !tenantId) return;
-              applyMutation.mutate({
-                tenantId,
-                employeeId: selectedEmployeeId,
-                type: leaveType,
-                startDate,
-                endDate,
-                reason,
-              });
-            }}
-          >
-            {applyMutation.isPending ? "Submitting..." : "Submit Request"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ApplyLeaveDialog
+        open={applyOpen}
+        onClose={() => setApplyOpen(false)}
+        onSubmit={(data: ApplyLeaveForm) => applyMutation.mutate(data)}
+        loading={applyMutation.isPending}
+        employees={employees}
+        tenantId={tenantId ?? ""}
+      />
 
-      <Dialog
+      <RejectLeaveDialog
         open={!!rejectOpen}
         onClose={() => setRejectOpen(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Reject Leave Request</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            label="Rejection reason"
-            value={rejectNote}
-            onChange={(e) => setRejectNote(e.target.value)}
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectOpen(null)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={!rejectNote || rejectMutation.isPending}
-            onClick={() => {
-              if (rejectOpen) {
-                rejectMutation.mutate({ id: rejectOpen, note: rejectNote });
-              }
-            }}
-          >
-            Reject
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={(note) => {
+          if (rejectOpen) rejectMutation.mutate({ id: rejectOpen, note });
+        }}
+        loading={rejectMutation.isPending}
+      />
     </Stack>
   );
 }

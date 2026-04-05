@@ -3,21 +3,14 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import {
-  Autocomplete,
   Box,
   Button,
   Card,
   CardContent,
-  Checkbox,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   LinearProgress,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -26,13 +19,14 @@ import { DataGrid } from "@mui/x-data-grid";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
-import { EmptyState } from "../../components/common/EmptyState";
-import { PageHeader } from "../../components/common/PageHeader";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-import type { RoleDto } from "../../types/api";
+import { ConfirmDialog, EmptyState, PageHeader } from "@/components";
+import { useNotify } from "@/hooks/useNotify";
+import { qk } from "@/lib/query-keys";
+import { rolesApi } from "./api";
+import type { RoleDto } from "./types";
+import type { CreateRoleForm } from "./schemas";
+import { CreateRoleDialog } from "./CreateRoleDialog";
+import { EditPermissionsDialog } from "./EditPermissionsDialog";
 
 function RolesEmpty() {
   return (
@@ -49,43 +43,38 @@ export function RolesPage() {
   const queryClient = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [roleName, setRoleName] = useState("");
-  const [createPerms, setCreatePerms] = useState<string[]>([]);
-  const [editOpen, setEditOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleDto | null>(null);
-  const [editPerms, setEditPerms] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<RoleDto | null>(null);
 
   const rolesQuery = useQuery({
     queryKey: qk.roles.all,
-    queryFn: api.roles.list,
+    queryFn: rolesApi.list,
   });
 
   const availablePermsQuery = useQuery({
     queryKey: qk.roles.availablePermissions,
-    queryFn: api.roles.getAvailablePermissions,
+    queryFn: rolesApi.getAvailablePermissions,
   });
 
   const createMutation = useMutation({
-    mutationFn: () => api.roles.create({ name: roleName, permissions: createPerms }),
+    mutationFn: (data: CreateRoleForm) =>
+      rolesApi.create({ name: data.name, permissions: data.permissions }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles.all });
       setCreateOpen(false);
-      setRoleName("");
-      setCreatePerms([]);
       notify.success("Role created");
     },
     onError: notify.error,
   });
 
   const updatePermsMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (perms: string[]) => {
       if (!editRole) return Promise.reject(new Error("No role selected"));
-      return api.roles.updatePermissions(editRole.id, { permissions: editPerms });
+      return rolesApi.updatePermissions(editRole.id, { permissions: perms });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles.all });
-      setEditOpen(false);
+      setEditRole(null);
       notify.success("Permissions updated");
     },
     onError: notify.error,
@@ -94,7 +83,7 @@ export function RolesPage() {
   const deleteMutation = useMutation({
     mutationFn: () => {
       if (!deleteTarget) return Promise.reject(new Error("No role selected"));
-      return api.roles.delete(deleteTarget.id);
+      return rolesApi.delete(deleteTarget.id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles.all });
@@ -103,14 +92,6 @@ export function RolesPage() {
     },
     onError: notify.error,
   });
-
-  const openEditPerms = (role: RoleDto) => {
-    setEditRole(role);
-    setEditPerms([...role.permissions]);
-    setEditOpen(true);
-  };
-
-  const allPerms = availablePermsQuery.data ?? [];
 
   const columns = useMemo<GridColDef<RoleDto>[]>(
     () => [
@@ -163,7 +144,7 @@ export function RolesPage() {
         renderCell: ({ row }) => (
           <Stack direction="row" spacing={0.5}>
             <Tooltip title="Edit Permissions">
-              <IconButton size="small" onClick={() => openEditPerms(row)}>
+              <IconButton size="small" onClick={() => setEditRole(row)}>
                 <EditRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -222,95 +203,24 @@ export function RolesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Create Role</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <TextField
-              autoFocus
-              fullWidth
-              label="Role Name"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-            />
-            <Autocomplete
-              multiple
-              options={allPerms}
-              value={createPerms}
-              onChange={(_, v) => setCreatePerms(v)}
-              disableCloseOnSelect
-              renderOption={(props, option, { selected: checked }) => {
-                const { key, ...rest } = props;
-                return (
-                  <li key={key} {...rest}>
-                    <Checkbox size="small" checked={checked} sx={{ mr: 1 }} />
-                    {option}
-                  </li>
-                );
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Permissions" placeholder="Select permissions" />
-              )}
-              limitTags={5}
-              slotProps={{ chip: { size: "small" } }}
-              loading={availablePermsQuery.isFetching}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || !roleName.trim()}
-          >
-            {createMutation.isPending ? "Creating..." : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CreateRoleDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={(data) => createMutation.mutate(data)}
+        loading={createMutation.isPending}
+        availablePermissions={availablePermsQuery.data ?? []}
+        permissionsLoading={availablePermsQuery.isFetching}
+      />
 
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Edit Permissions — {editRole?.name}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <Typography variant="body2" color="text.secondary">
-              Select permissions for this role from the available list
-            </Typography>
-            <Autocomplete
-              multiple
-              options={allPerms}
-              value={editPerms}
-              onChange={(_, v) => setEditPerms(v)}
-              disableCloseOnSelect
-              renderOption={(props, option, { selected: checked }) => {
-                const { key, ...rest } = props;
-                return (
-                  <li key={key} {...rest}>
-                    <Checkbox size="small" checked={checked} sx={{ mr: 1 }} />
-                    {option}
-                  </li>
-                );
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Permissions" placeholder="Select permissions" />
-              )}
-              limitTags={5}
-              slotProps={{ chip: { size: "small" } }}
-              loading={availablePermsQuery.isFetching}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={() => updatePermsMutation.mutate()}
-            disabled={updatePermsMutation.isPending}
-          >
-            {updatePermsMutation.isPending ? "Saving..." : "Save Permissions"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EditPermissionsDialog
+        open={!!editRole}
+        role={editRole}
+        onClose={() => setEditRole(null)}
+        onSubmit={(perms) => updatePermsMutation.mutate(perms)}
+        loading={updatePermsMutation.isPending}
+        availablePermissions={availablePermsQuery.data ?? []}
+        permissionsLoading={availablePermsQuery.isFetching}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

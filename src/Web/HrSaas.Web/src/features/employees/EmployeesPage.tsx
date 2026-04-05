@@ -1,14 +1,9 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   InputAdornment,
   Stack,
@@ -16,38 +11,20 @@ import {
   Tooltip,
 } from "@mui/material";
 import { DataGrid, type GridColDef, type GridPaginationModel } from "@mui/x-data-grid";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
-import { EmptyState } from "../../components/common/EmptyState";
-import { PageHeader } from "../../components/common/PageHeader";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-import type { EmployeeSummaryDto } from "../../types/api";
-
-const createSchema = z.object({
-  name: z.string().min(2, "Name is required").max(200),
-  department: z.string().min(2, "Department is required").max(100),
-  position: z.string().min(2, "Position is required").max(100),
-  email: z.email("Valid email is required"),
-});
-
-const editSchema = z.object({
-  name: z.string().min(2, "Name is required").max(200),
-  department: z.string().min(2, "Department is required").max(100),
-  position: z.string().min(2, "Position is required").max(100),
-});
-
-type CreateForm = z.infer<typeof createSchema>;
-type EditForm = z.infer<typeof editSchema>;
+import { useMemo, useState } from "react";
+import { ConfirmDialog, EmptyState, PageHeader } from "@/components";
+import type { EmployeeSummaryDto } from "./types";
+import type { CreateEmployeeForm, EditEmployeeForm } from "./schemas";
+import {
+  useCreateEmployee,
+  useDeleteEmployee,
+  useEmployeeList,
+  useUpdateEmployee,
+} from "./hooks";
+import { CreateEmployeeDialog } from "./CreateEmployeeDialog";
+import { EditEmployeeDialog } from "./EditEmployeeDialog";
 
 export function EmployeesPage() {
-  const notify = useNotify();
-  const queryClient = useQueryClient();
-
   const [search, setSearch] = useState("");
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
@@ -61,64 +38,10 @@ export function EmployeesPage() {
   const page = paginationModel.page + 1;
   const pageSize = paginationModel.pageSize;
 
-  const employeesQuery = useQuery({
-    queryKey: qk.employees.list(page, pageSize, department),
-    queryFn: () => api.employees.list(page, pageSize, department),
-    placeholderData: (prev) => prev,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: api.employees.create,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.employees.all });
-      setCreateOpen(false);
-      createForm.reset();
-      notify.success("Employee created successfully");
-    },
-    onError: notify.error,
-  });
-
-  const editMutation = useMutation({
-    mutationFn: ({ id, ...payload }: EditForm & { id: string }) =>
-      api.employees.update(id, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.employees.all });
-      setEditTarget(null);
-      notify.success("Employee updated successfully");
-    },
-    onError: notify.error,
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: api.employees.delete,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.employees.all });
-      setDeleteTarget(null);
-      notify.success("Employee deleted");
-    },
-    onError: notify.error,
-  });
-
-  const createForm = useForm<CreateForm>({
-    resolver: zodResolver(createSchema),
-    defaultValues: { name: "", department: "", position: "", email: "" },
-  });
-
-  const editForm = useForm<EditForm>({
-    resolver: zodResolver(editSchema),
-  });
-
-  const openEdit = useCallback(
-    (row: EmployeeSummaryDto) => {
-      setEditTarget(row);
-      editForm.reset({
-        name: row.name,
-        department: row.department,
-        position: row.position,
-      });
-    },
-    [editForm],
-  );
+  const employeesQuery = useEmployeeList(page, pageSize, department);
+  const createMutation = useCreateEmployee(() => setCreateOpen(false));
+  const editMutation = useUpdateEmployee(() => setEditTarget(null));
+  const deleteMutation = useDeleteEmployee();
 
   const columns = useMemo<GridColDef<EmployeeSummaryDto>[]>(
     () => [
@@ -133,7 +56,7 @@ export function EmployeesPage() {
         renderCell: ({ row }) => (
           <Stack direction="row" spacing={0.5}>
             <Tooltip title="Edit">
-              <IconButton size="small" onClick={() => openEdit(row)}>
+              <IconButton size="small" onClick={() => setEditTarget(row)}>
                 <EditRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -146,7 +69,7 @@ export function EmployeesPage() {
         ),
       },
     ],
-    [openEdit],
+    [],
   );
 
   return (
@@ -208,91 +131,22 @@ export function EmployeesPage() {
         sx={{ minHeight: 400 }}
       />
 
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Create Employee</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <TextField
-              label="Full Name"
-              error={!!createForm.formState.errors.name}
-              helperText={createForm.formState.errors.name?.message}
-              {...createForm.register("name")}
-            />
-            <TextField
-              label="Email"
-              type="email"
-              error={!!createForm.formState.errors.email}
-              helperText={createForm.formState.errors.email?.message}
-              {...createForm.register("email")}
-            />
-            <TextField
-              label="Department"
-              error={!!createForm.formState.errors.department}
-              helperText={createForm.formState.errors.department?.message}
-              {...createForm.register("department")}
-            />
-            <TextField
-              label="Position"
-              error={!!createForm.formState.errors.position}
-              helperText={createForm.formState.errors.position?.message}
-              {...createForm.register("position")}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={createForm.handleSubmit((v) => createMutation.mutate(v))}
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending ? "Creating..." : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CreateEmployeeDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={(data: CreateEmployeeForm) => createMutation.mutate(data)}
+        loading={createMutation.isPending}
+      />
 
-      <Dialog
+      <EditEmployeeDialog
         open={!!editTarget}
+        employee={editTarget}
         onClose={() => setEditTarget(null)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Edit Employee</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <TextField
-              label="Full Name"
-              error={!!editForm.formState.errors.name}
-              helperText={editForm.formState.errors.name?.message}
-              {...editForm.register("name")}
-            />
-            <TextField
-              label="Department"
-              error={!!editForm.formState.errors.department}
-              helperText={editForm.formState.errors.department?.message}
-              {...editForm.register("department")}
-            />
-            <TextField
-              label="Position"
-              error={!!editForm.formState.errors.position}
-              helperText={editForm.formState.errors.position?.message}
-              {...editForm.register("position")}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditTarget(null)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={editForm.handleSubmit((v) =>
-              editMutation.mutate({ id: editTarget!.id, ...v }),
-            )}
-            disabled={editMutation.isPending}
-          >
-            {editMutation.isPending ? "Saving..." : "Save Changes"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSubmit={(data: EditEmployeeForm & { id: string }) =>
+          editMutation.mutate({ id: data.id, payload: data })
+        }
+        loading={editMutation.isPending}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

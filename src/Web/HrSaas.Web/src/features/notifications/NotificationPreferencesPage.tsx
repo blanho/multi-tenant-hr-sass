@@ -21,27 +21,18 @@ import {
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { PageHeader } from "../../components/common/PageHeader";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-import type {
-  DigestFrequency,
-  NotificationCategory,
-  NotificationChannel,
-  NotificationPreferencesDto,
-} from "../../types/api";
-
-const ALL_CHANNELS: NotificationChannel[] = ["Email", "Sms", "InApp", "Push", "Webhook", "Slack"];
-const ALL_CATEGORIES: NotificationCategory[] = [
-  "System", "Leave", "Employee", "Billing", "Security", "Tenant", "General",
-];
-const DIGEST_OPTIONS: DigestFrequency[] = ["None", "Daily", "Weekly", "BiWeekly", "Monthly"];
+import { PageHeader } from "@/components";
+import { useNotify } from "@/hooks/useNotify";
+import { qk } from "@/lib/query-keys";
+import { notificationPreferencesApi } from "./api";
+import { CATEGORIES, CHANNELS, DIGEST_OPTIONS } from "./constants";
+import type { DigestFrequency, NotificationCategory, NotificationChannel } from "@/types/shared";
+import type { NotificationPreferencesDto } from "./types";
 
 export function NotificationPreferencesPage() {
   const prefsQuery = useQuery({
     queryKey: qk.notifications.preferences,
-    queryFn: api.notificationPreferences.get,
+    queryFn: notificationPreferencesApi.get,
   });
 
   if (prefsQuery.isFetching && !prefsQuery.data) {
@@ -70,12 +61,7 @@ export function NotificationPreferencesPage() {
     );
   }
 
-  return (
-    <PreferencesForm
-      key={prefsQuery.dataUpdatedAt}
-      initial={prefsQuery.data}
-    />
-  );
+  return <PreferencesForm key={prefsQuery.dataUpdatedAt} initial={prefsQuery.data} />;
 }
 
 function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreferencesDto }>) {
@@ -98,7 +84,7 @@ function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreference
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      api.notificationPreferences.update({
+      notificationPreferencesApi.update({
         enabledChannels,
         mutedCategories,
         emailEnabled,
@@ -155,7 +141,7 @@ function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreference
                 Select which channels you want to receive notifications on
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {ALL_CHANNELS.map((ch) => (
+                {CHANNELS.map((ch) => (
                   <Chip
                     key={ch}
                     label={ch}
@@ -171,10 +157,7 @@ function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreference
 
               <FormControlLabel
                 control={
-                  <Switch
-                    checked={emailEnabled}
-                    onChange={(_, v) => setEmailEnabled(v)}
-                  />
+                  <Switch checked={emailEnabled} onChange={(_, v) => setEmailEnabled(v)} />
                 }
                 label="Email Notifications Enabled"
               />
@@ -192,7 +175,7 @@ function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreference
                 Select categories you want to mute
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {ALL_CATEGORIES.map((cat) => (
+                {CATEGORIES.map((cat) => (
                   <Chip
                     key={cat}
                     label={cat}
@@ -222,7 +205,9 @@ function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreference
                   onChange={(e) => setDigestFrequency(e.target.value as DigestFrequency)}
                 >
                   {DIGEST_OPTIONS.map((d) => (
-                    <MenuItem key={d} value={d}>{d}</MenuItem>
+                    <MenuItem key={d} value={d}>
+                      {d}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>

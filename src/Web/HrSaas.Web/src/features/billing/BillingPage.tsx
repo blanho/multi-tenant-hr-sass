@@ -5,66 +5,37 @@ import {
   Button,
   Card,
   CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
-  FormControl,
   Grid,
-  InputAdornment,
-  InputLabel,
   LinearProgress,
-  MenuItem,
-  Select,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useState } from "react";
-import { EmptyState } from "../../components/common/EmptyState";
-import { PageHeader } from "../../components/common/PageHeader";
-import { StatusChip } from "../../components/common/StatusChip";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-import type { BillingCycle } from "../../types/api";
-
-function InfoRow({ label, value }: Readonly<{ label: string; value: string | number }>) {
-  return (
-    <Stack direction="row" justifyContent="space-between" py={0.75}>
-      <Typography variant="body2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="body2" fontWeight={600}>
-        {value}
-      </Typography>
-    </Stack>
-  );
-}
-
-const BILLING_CYCLES: BillingCycle[] = ["Monthly", "Annual"];
+import { DetailRow, EmptyState, PageHeader, StatusChip } from "@/components";
+import { useNotify } from "@/hooks/useNotify";
+import { qk } from "@/lib/query-keys";
+import { billingApi } from "./api";
+import type { BillingCycle } from "@/types/shared";
+import { ActivateSubscriptionDialog } from "./ActivateSubscriptionDialog";
+import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
 
 export function BillingPage() {
   const notify = useNotify();
   const queryClient = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("Cost optimization");
   const [activateOpen, setActivateOpen] = useState(false);
-  const [activatePrice, setActivatePrice] = useState("29.99");
-  const [activateCycle, setActivateCycle] = useState<BillingCycle>("Monthly");
-  const [activateExternalId, setActivateExternalId] = useState("");
 
   const subscriptionQuery = useQuery({
     queryKey: qk.billing.subscription,
-    queryFn: api.billing.getSubscription,
+    queryFn: billingApi.getSubscription,
     retry: 0,
   });
 
   const createFreeMutation = useMutation({
-    mutationFn: api.billing.createFree,
+    mutationFn: billingApi.createFree,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.billing.subscription });
       notify.success("Free subscription activated");
@@ -73,14 +44,18 @@ export function BillingPage() {
   });
 
   const activateMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: ({
+      price,
+      cycle,
+      externalId,
+    }: {
+      price: number;
+      cycle: BillingCycle;
+      externalId?: string;
+    }) => {
       const sub = subscriptionQuery.data;
       if (!sub) return Promise.reject(new Error("No subscription"));
-      return api.billing.activate(sub.id, {
-        price: Number.parseFloat(activatePrice),
-        cycle: activateCycle,
-        externalId: activateExternalId || undefined,
-      });
+      return billingApi.activate(sub.id, { price, cycle, externalId });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.billing.subscription });
@@ -91,10 +66,10 @@ export function BillingPage() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (reason: string) => {
       const sub = subscriptionQuery.data;
       if (!sub) return Promise.reject(new Error("No subscription"));
-      return api.billing.cancel({ subscriptionId: sub.id, reason: cancelReason });
+      return billingApi.cancel({ subscriptionId: sub.id, reason });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.billing.subscription });
@@ -148,24 +123,32 @@ export function BillingPage() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Card>
               <CardContent>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={2}
+                >
                   <Typography variant="h6">Subscription Details</Typography>
                   <StatusChip status={sub.status} />
                 </Stack>
                 <Divider />
                 <Stack mt={1}>
-                  <InfoRow label="Plan" value={sub.planName} />
-                  <InfoRow label="Billing Cycle" value={sub.billingCycle} />
-                  <InfoRow label="Price" value={`$${sub.pricePerCycle.toFixed(2)}`} />
-                  <InfoRow label="Created" value={dayjs(sub.createdAt).format("MMM D, YYYY")} />
+                  <DetailRow label="Plan" value={sub.planName} />
+                  <DetailRow label="Billing Cycle" value={sub.billingCycle} />
+                  <DetailRow label="Price" value={`$${sub.pricePerCycle.toFixed(2)}`} />
+                  <DetailRow
+                    label="Created"
+                    value={dayjs(sub.createdAt).format("MMM D, YYYY")}
+                  />
                   {sub.currentPeriodEnd && (
-                    <InfoRow
+                    <DetailRow
                       label="Current Period Ends"
                       value={dayjs(sub.currentPeriodEnd).format("MMM D, YYYY")}
                     />
                   )}
                   {sub.trialEndsAt && (
-                    <InfoRow
+                    <DetailRow
                       label="Trial Ends"
                       value={dayjs(sub.trialEndsAt).format("MMM D, YYYY")}
                     />
@@ -191,11 +174,11 @@ export function BillingPage() {
                     </Typography>
                   </Stack>
                   <LinearProgress
-                      variant="determinate"
-                      value={seatPercent}
-                      color={seatColor()}
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
+                    variant="determinate"
+                    value={seatPercent}
+                    color={seatColor()}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
                   <Typography variant="caption" color="text.disabled">
                     {sub.maxSeats - sub.usedSeats} seats remaining
                   </Typography>
@@ -226,87 +209,21 @@ export function BillingPage() {
         </Grid>
       )}
 
-      <Dialog open={activateOpen} onClose={() => setActivateOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Activate Subscription</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <Typography variant="body2" color="text.secondary">
-              Set the pricing and billing cycle for this subscription
-            </Typography>
-            <TextField
-              fullWidth
-              label="Price per Cycle"
-              type="number"
-              value={activatePrice}
-              onChange={(e) => setActivatePrice(e.target.value)}
-              slotProps={{
-                input: {
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                },
-              }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Billing Cycle</InputLabel>
-              <Select
-                value={activateCycle}
-                label="Billing Cycle"
-                onChange={(e) => setActivateCycle(e.target.value as BillingCycle)}
-              >
-                {BILLING_CYCLES.map((c) => (
-                  <MenuItem key={c} value={c}>
-                    {c}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              fullWidth
-              label="External ID (optional)"
-              placeholder="Stripe subscription ID"
-              value={activateExternalId}
-              onChange={(e) => setActivateExternalId(e.target.value)}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setActivateOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={() => activateMutation.mutate()}
-            disabled={activateMutation.isPending || !activatePrice}
-          >
-            {activateMutation.isPending ? "Activating..." : "Activate"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ActivateSubscriptionDialog
+        open={activateOpen}
+        onClose={() => setActivateOpen(false)}
+        onSubmit={(price, cycle, externalId) =>
+          activateMutation.mutate({ price, cycle, externalId })
+        }
+        loading={activateMutation.isPending}
+      />
 
-      <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Cancel Subscription</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            Please tell us why you are cancelling. This helps us improve.
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            label="Reason"
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelOpen(false)}>Keep Subscription</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => cancelMutation.mutate()}
-            disabled={cancelMutation.isPending || !cancelReason}
-          >
-            {cancelMutation.isPending ? "Cancelling..." : "Confirm Cancel"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CancelSubscriptionDialog
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={(reason) => cancelMutation.mutate(reason)}
+        loading={cancelMutation.isPending}
+      />
     </Stack>
   );
 }

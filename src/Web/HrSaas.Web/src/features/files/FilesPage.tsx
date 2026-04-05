@@ -10,46 +10,29 @@ import {
   CardContent,
   Chip,
   Collapse,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Drawer,
   FormControl,
   IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
-  TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import type { GridColDef, GridPaginationModel } from "@mui/x-data-grid";
 import { DataGrid } from "@mui/x-data-grid";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
-import { EmptyState } from "../../components/common/EmptyState";
-import { PageHeader } from "../../components/common/PageHeader";
-import { StatusChip } from "../../components/common/StatusChip";
-import { useNotify } from "../../components/feedback/useNotify";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-import type {
-  FileCategory,
-  FileDetailDto,
-  FileScanStatus,
-  FileSummaryDto,
-} from "../../types/api";
-
-const FILE_CATEGORIES: FileCategory[] = [
-  "General", "Avatar", "Document", "Contract", "Receipt",
-  "Resume", "Policy", "Report", "Template", "Attachment",
-];
-
-const SCAN_STATUSES: FileScanStatus[] = ["Pending", "Clean", "Infected", "Error"];
+import { useCallback, useMemo, useState } from "react";
+import { ConfirmDialog, EmptyState, PageHeader, StatusChip } from "@/components";
+import { useNotify } from "@/hooks/useNotify";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query-keys";
+import type { FileCategory, FileScanStatus } from "@/types/shared";
+import type { FileDetailDto, FileSummaryDto } from "./types";
+import { FILE_CATEGORIES, SCAN_STATUSES } from "./constants";
+import { formatFileSize } from "./utils";
+import { FileUploadDialog } from "./FileUploadDialog";
+import { FileDetailDrawer } from "./FileDetailDrawer";
 
 function FilesEmpty() {
   return (
@@ -61,16 +44,9 @@ function FilesEmpty() {
   );
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function FilesPage() {
   const notify = useNotify();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
@@ -79,12 +55,7 @@ export function FilesPage() {
   const [categoryFilter, setCategoryFilter] = useState<FileCategory | "">("");
   const [scanFilter, setScanFilter] = useState<FileScanStatus | "">("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadCategory, setUploadCategory] = useState<FileCategory>("General");
-  const [uploadDescription, setUploadDescription] = useState("");
-
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<FileDetailDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FileSummaryDto | null>(null);
@@ -105,15 +76,11 @@ export function FilesPage() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: () => {
-      if (!uploadFile) return Promise.reject(new Error("No file selected"));
-      return api.files.upload(uploadFile, uploadCategory, uploadDescription || undefined);
-    },
+    mutationFn: ({ file, category, description }: { file: File; category: FileCategory; description?: string }) =>
+      api.files.upload(file, category, description),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files"] });
       setUploadOpen(false);
-      setUploadFile(null);
-      setUploadDescription("");
       notify.success("File uploaded successfully");
     },
     onError: notify.error,
@@ -159,12 +126,7 @@ export function FilesPage() {
 
   const columns = useMemo<GridColDef<FileSummaryDto>[]>(
     () => [
-      {
-        field: "fileName",
-        headerName: "File Name",
-        flex: 1,
-        minWidth: 200,
-      },
+      { field: "fileName", headerName: "File Name", flex: 1, minWidth: 200 },
       {
         field: "category",
         headerName: "Category",
@@ -208,11 +170,7 @@ export function FilesPage() {
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => setDeleteTarget(row)}
-              >
+              <IconButton size="small" color="error" onClick={() => setDeleteTarget(row)}>
                 <DeleteRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -245,10 +203,7 @@ export function FilesPage() {
       <Card>
         <CardContent>
           <Stack direction="row" justifyContent="flex-end" mb={1}>
-            <Button
-              size="small"
-              onClick={() => setFiltersOpen((o) => !o)}
-            >
+            <Button size="small" onClick={() => setFiltersOpen((o) => !o)}>
               Filters
             </Button>
           </Stack>
@@ -267,7 +222,9 @@ export function FilesPage() {
                 >
                   <MenuItem value="">All</MenuItem>
                   {FILE_CATEGORIES.map((c) => (
-                    <MenuItem key={c} value={c}>{c}</MenuItem>
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -284,7 +241,9 @@ export function FilesPage() {
                 >
                   <MenuItem value="">All</MenuItem>
                   {SCAN_STATUSES.map((s) => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -311,81 +270,20 @@ export function FilesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={uploadOpen} onClose={() => setUploadOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Upload File</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              hidden
-              onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-            />
-            <Button
-              variant="outlined"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploadFile ? uploadFile.name : "Choose File"}
-            </Button>
+      <FileUploadDialog
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onUpload={(file, category, description) =>
+          uploadMutation.mutate({ file, category, description })
+        }
+        loading={uploadMutation.isPending}
+      />
 
-            <FormControl fullWidth>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={uploadCategory}
-                label="Category"
-                onChange={(e) => setUploadCategory(e.target.value as FileCategory)}
-              >
-                {FILE_CATEGORIES.map((c) => (
-                  <MenuItem key={c} value={c}>{c}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              fullWidth
-              multiline
-              minRows={2}
-              label="Description (optional)"
-              value={uploadDescription}
-              onChange={(e) => setUploadDescription(e.target.value)}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setUploadOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={() => uploadMutation.mutate()}
-            disabled={uploadMutation.isPending || !uploadFile}
-          >
-            {uploadMutation.isPending ? "Uploading..." : "Upload"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Drawer
-        anchor="right"
+      <FileDetailDrawer
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        slotProps={{ paper: { sx: { width: 380, p: 3 } } }}
-      >
-        {selected && (
-          <Stack spacing={2}>
-            <Typography variant="h6">File Details</Typography>
-            <StatusChip status={selected.scanStatus} />
-            <Stack spacing={0.5}>
-              <DetailRow label="Name" value={selected.fileName} />
-              <DetailRow label="Type" value={selected.contentType} />
-              <DetailRow label="Size" value={formatFileSize(selected.fileSize)} />
-              <DetailRow label="Category" value={selected.category} />
-              <DetailRow label="Uploaded By" value={selected.uploadedBy} />
-              <DetailRow label="Uploaded" value={dayjs(selected.createdAt).format("MMM D, YYYY")} />
-              {selected.description && <DetailRow label="Description" value={selected.description} />}
-              {selected.tags && <DetailRow label="Tags" value={selected.tags} />}
-            </Stack>
-          </Stack>
-        )}
-      </Drawer>
+        file={selected}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}
@@ -397,23 +295,6 @@ export function FilesPage() {
         onConfirm={() => deleteMutation.mutate()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </Stack>
-  );
-}
-
-function DetailRow({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <Stack direction="row" justifyContent="space-between" py={0.5}>
-      <Typography variant="body2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        fontWeight={500}
-        sx={{ maxWidth: 200, wordBreak: "break-all", textAlign: "right" }}
-      >
-        {value}
-      </Typography>
     </Stack>
   );
 }

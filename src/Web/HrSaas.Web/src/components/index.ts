@@ -1,6 +1,8 @@
 export { ConfirmDialog } from "./common/ConfirmDialog";
+export { DetailRow } from "./common/DetailRow";
 export { EmptyState } from "./common/EmptyState";
 export { ErrorBoundary } from "./common/ErrorBoundary";
+export { JsonBlock } from "./common/JsonBlock";
 export { PageHeader } from "./common/PageHeader";
 export { StatCard } from "./common/StatCard";
 export { StatusChip } from "./common/StatusChip";

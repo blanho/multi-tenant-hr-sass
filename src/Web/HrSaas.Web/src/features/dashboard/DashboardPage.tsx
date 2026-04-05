@@ -26,19 +26,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { PageHeader } from "../../components/common/PageHeader";
-import { StatCard } from "../../components/common/StatCard";
-import { StatusChip } from "../../components/common/StatusChip";
-import { api } from "../../lib/api";
-import { qk } from "../../lib/query-keys";
-
-const PIE_COLORS = ["#6366F1", "#818CF8", "#10B981", "#F59E0B", "#EF4444", "#A78BFA"];
-
-function seatColor(percent: number): "error" | "warning" | "primary" {
-  if (percent > 85) return "error";
-  if (percent > 60) return "warning";
-  return "primary";
-}
+import { PageHeader, StatCard, StatusChip } from "@/components";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query-keys";
+import { PIE_COLORS } from "./constants";
+import { seatColor } from "./utils";
 
 export function DashboardPage() {
   const employeesQuery = useQuery({
@@ -158,7 +150,10 @@ export function DashboardPage() {
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie
-                      data={leaveByType.map((entry, i) => ({ ...entry, fill: PIE_COLORS[i % PIE_COLORS.length] }))}
+                      data={leaveByType.map((entry, i) => ({
+                        ...entry,
+                        fill: PIE_COLORS[i % PIE_COLORS.length],
+                      }))}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
@@ -210,7 +205,12 @@ export function DashboardPage() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Card>
               <CardContent>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={2}
+                >
                   <Typography variant="h6">Seat Usage</Typography>
                   <StatusChip status={sub.status} />
                 </Stack>
@@ -231,7 +231,8 @@ export function DashboardPage() {
                   />
                   {sub.currentPeriodEnd && (
                     <Typography variant="caption" color="text.disabled">
-                      Current period ends {dayjs(sub.currentPeriodEnd).format("MMM D, YYYY")}
+                      Current period ends{" "}
+                      {dayjs(sub.currentPeriodEnd).format("MMM D, YYYY")}
                     </Typography>
                   )}
                 </Stack>
@@ -282,7 +283,11 @@ export function DashboardPage() {
                       direction="row"
                       justifyContent="space-between"
                       alignItems="center"
-                      sx={{ py: 1, borderBottom: "1px solid", borderColor: "divider" }}
+                      sx={{
+                        py: 1,
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+                      }}
                     >
                       <Stack direction="row" spacing={2} alignItems="center">
                         <Chip label={lr.type} size="small" variant="outlined" />
