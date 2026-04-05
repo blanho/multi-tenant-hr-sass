@@ -11,6 +11,7 @@ import type {
   CancelSubscriptionPayload,
   CreateEmployeePayload,
   CreateNotificationPayload,
+  CreateBulkNotificationPayload,
   CreateNotificationTemplatePayload,
   CreateRolePayload,
   CreateTenantPayload,
@@ -41,7 +42,7 @@ import type {
   UpdateEmployeePayload,
   UpdateNotificationPreferencesPayload,
   UpdateRolePermissionsPayload,
-  UpdateSubscriptionPayload,
+  ActivateSubscriptionPayload,
   UpdateTenantPayload,
   UserDto,
 } from "../types/api";
@@ -82,8 +83,8 @@ export const api = {
       const { data } = await http.get<RoleDto>(`/roles/${id}`);
       return data;
     },
-    getPermissions: async (id: string) => {
-      const { data } = await http.get<string[]>(`/roles/${id}/permissions`);
+    getAvailablePermissions: async () => {
+      const { data } = await http.get<string[]>("/roles/permissions");
       return data;
     },
     create: async (payload: CreateRolePayload) => {
@@ -125,6 +126,10 @@ export const api = {
   },
 
   leave: {
+    getById: async (id: string) => {
+      const { data } = await http.get<LeaveRequestDto>(`/leave/${id}`);
+      return data;
+    },
     getByEmployee: async (employeeId: string, year?: number) => {
       const { data } = await http.get<LeaveRequestDto[]>(`/leave/employee/${employeeId}`, {
         params: { year: year || undefined },
@@ -192,8 +197,8 @@ export const api = {
       const { data } = await http.post<{ id: string }>("/billing/subscription/create-free");
       return data;
     },
-    update: async (payload: UpdateSubscriptionPayload) => {
-      await http.post("/billing/subscription/update", payload);
+    activate: async (subscriptionId: string, payload: ActivateSubscriptionPayload) => {
+      await http.post(`/billing/subscription/${subscriptionId}/activate`, payload);
     },
     cancel: async (payload: CancelSubscriptionPayload) => {
       await http.post("/billing/subscription/cancel", payload);
@@ -242,18 +247,22 @@ export const api = {
       const { data } = await http.post<NotificationDetailDto>(`/notifications/${id}/retry`);
       return data;
     },
+    createBulk: async (payload: CreateBulkNotificationPayload) => {
+      const { data } = await http.post<{ id: string }>("/notifications/bulk", payload);
+      return data;
+    },
   },
 
   notificationPreferences: {
     get: async () => {
       const { data } = await http.get<NotificationPreferencesDto>(
-        "/notification-preferences",
+        "/notifications/preferences",
       );
       return data;
     },
     update: async (payload: UpdateNotificationPreferencesPayload) => {
       const { data } = await http.put<NotificationPreferencesDto>(
-        "/notification-preferences",
+        "/notifications/preferences",
         payload,
       );
       return data;
@@ -263,14 +272,14 @@ export const api = {
   notificationTemplates: {
     list: async (channel?: NotificationChannel, isActive?: boolean) => {
       const { data } = await http.get<NotificationTemplateDto[]>(
-        "/notification-templates",
+        "/notifications/templates",
         { params: { channel: channel || undefined, isActive: isActive ?? undefined } },
       );
       return data;
     },
     create: async (payload: CreateNotificationTemplatePayload) => {
       const { data } = await http.post<{ id: string }>(
-        "/notification-templates",
+        "/notifications/templates",
         payload,
       );
       return data;

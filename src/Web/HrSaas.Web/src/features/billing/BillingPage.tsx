@@ -1,5 +1,6 @@
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CreditScoreRoundedIcon from "@mui/icons-material/CreditScoreRounded";
+import RocketLaunchRoundedIcon from "@mui/icons-material/RocketLaunchRounded";
 import {
   Button,
   Card,
@@ -9,8 +10,13 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   Grid,
+  InputAdornment,
+  InputLabel,
   LinearProgress,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -24,6 +30,7 @@ import { StatusChip } from "../../components/common/StatusChip";
 import { useNotify } from "../../components/feedback/useNotify";
 import { api } from "../../lib/api";
 import { qk } from "../../lib/query-keys";
+import type { BillingCycle } from "../../types/api";
 
 function InfoRow({ label, value }: Readonly<{ label: string; value: string | number }>) {
   return (
@@ -38,11 +45,17 @@ function InfoRow({ label, value }: Readonly<{ label: string; value: string | num
   );
 }
 
+const BILLING_CYCLES: BillingCycle[] = ["Monthly", "Annual"];
+
 export function BillingPage() {
   const notify = useNotify();
   const queryClient = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("Cost optimization");
+  const [activateOpen, setActivateOpen] = useState(false);
+  const [activatePrice, setActivatePrice] = useState("29.99");
+  const [activateCycle, setActivateCycle] = useState<BillingCycle>("Monthly");
+  const [activateExternalId, setActivateExternalId] = useState("");
 
   const subscriptionQuery = useQuery({
     queryKey: qk.billing.subscription,
@@ -55,6 +68,24 @@ export function BillingPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.billing.subscription });
       notify.success("Free subscription activated");
+    },
+    onError: notify.error,
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: () => {
+      const sub = subscriptionQuery.data;
+      if (!sub) return Promise.reject(new Error("No subscription"));
+      return api.billing.activate(sub.id, {
+        price: Number.parseFloat(activatePrice),
+        cycle: activateCycle,
+        externalId: activateExternalId || undefined,
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.billing.subscription });
+      setActivateOpen(false);
+      notify.success("Subscription activated");
     },
     onError: notify.error,
   });
@@ -75,6 +106,12 @@ export function BillingPage() {
 
   const sub = subscriptionQuery.data;
   const seatPercent = sub ? Math.round((sub.usedSeats / sub.maxSeats) * 100) : 0;
+
+  function seatColor(): "error" | "warning" | "primary" {
+    if (seatPercent > 85) return "error";
+    if (seatPercent > 60) return "warning";
+    return "primary";
+  }
 
   return (
     <Stack spacing={2.5}>
@@ -154,11 +191,11 @@ export function BillingPage() {
                     </Typography>
                   </Stack>
                   <LinearProgress
-                    variant="determinate"
-                    value={seatPercent}
-                    color={seatPercent > 85 ? "error" : seatPercent > 60 ? "warning" : "primary"}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
+                      variant="determinate"
+                      value={seatPercent}
+                      color={seatColor()}
+                      sx={{ height: 8, borderRadius: 4 }}
+                    />
                   <Typography variant="caption" color="text.disabled">
                     {sub.maxSeats - sub.usedSeats} seats remaining
                   </Typography>
@@ -168,12 +205,19 @@ export function BillingPage() {
 
                 <Stack direction="row" spacing={2}>
                   <Button
+                    variant="contained"
+                    startIcon={<RocketLaunchRoundedIcon />}
+                    onClick={() => setActivateOpen(true)}
+                  >
+                    Activate / Upgrade
+                  </Button>
+                  <Button
                     color="error"
                     variant="outlined"
                     startIcon={<CancelRoundedIcon />}
                     onClick={() => setCancelOpen(true)}
                   >
-                    Cancel Subscription
+                    Cancel
                   </Button>
                 </Stack>
               </CardContent>
@@ -181,6 +225,60 @@ export function BillingPage() {
           </Grid>
         </Grid>
       )}
+
+      <Dialog open={activateOpen} onClose={() => setActivateOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Activate Subscription</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <Typography variant="body2" color="text.secondary">
+              Set the pricing and billing cycle for this subscription
+            </Typography>
+            <TextField
+              fullWidth
+              label="Price per Cycle"
+              type="number"
+              value={activatePrice}
+              onChange={(e) => setActivatePrice(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                },
+              }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Billing Cycle</InputLabel>
+              <Select
+                value={activateCycle}
+                label="Billing Cycle"
+                onChange={(e) => setActivateCycle(e.target.value as BillingCycle)}
+              >
+                {BILLING_CYCLES.map((c) => (
+                  <MenuItem key={c} value={c}>
+                    {c}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="External ID (optional)"
+              placeholder="Stripe subscription ID"
+              value={activateExternalId}
+              onChange={(e) => setActivateExternalId(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setActivateOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={() => activateMutation.mutate()}
+            disabled={activateMutation.isPending || !activatePrice}
+          >
+            {activateMutation.isPending ? "Activating..." : "Activate"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Cancel Subscription</DialogTitle>

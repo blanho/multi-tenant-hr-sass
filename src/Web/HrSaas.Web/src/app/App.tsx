@@ -22,6 +22,7 @@ import { UsersPage } from "../features/users/UsersPage";
 import { RolesPage } from "../features/roles/RolesPage";
 import { AuditLogsPage } from "../features/audit/AuditLogsPage";
 import { FilesPage } from "../features/files/FilesPage";
+import { NotificationTemplatesPage } from "../features/notifications/NotificationTemplatesPage";
 
 function ProtectedLayout() {
   const { isAuthenticated, isBootstrapping } = useAuth();
@@ -57,6 +58,7 @@ export function App() {
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
+                  <Route path="/notification-templates" element={<NotificationTemplatesPage />} />
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/roles" element={<RolesPage />} />
                   <Route path="/audit-logs" element={<AuditLogsPage />} />

@@ -1,3 +1,4 @@
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
@@ -11,6 +12,10 @@ import {
   CardContent,
   Chip,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Drawer,
   FormControl,
   FormControlLabel,
@@ -21,6 +26,7 @@ import {
   Select,
   Stack,
   Switch,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -41,6 +47,7 @@ import type {
   NotificationCategory,
   NotificationChannel,
   NotificationDetailDto,
+  NotificationPriority,
   NotificationSummaryDto,
 } from "../../types/api";
 
@@ -56,6 +63,8 @@ const CATEGORIES: NotificationCategory[] = [
   "Tenant",
   "General",
 ];
+
+const PRIORITIES: NotificationPriority[] = ["Low", "Normal", "High", "Critical"];
 
 function NotificationsEmpty() {
   return (
@@ -81,6 +90,13 @@ export function NotificationsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<NotificationDetailDto | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendUserId, setSendUserId] = useState("");
+  const [sendChannel, setSendChannel] = useState<NotificationChannel>("InApp");
+  const [sendCategory, setSendCategory] = useState<NotificationCategory>("System");
+  const [sendPriority, setSendPriority] = useState<NotificationPriority>("Normal");
+  const [sendSubject, setSendSubject] = useState("");
+  const [sendBody, setSendBody] = useState("");
 
   const filterParams = useMemo(
     () => ({
@@ -126,6 +142,27 @@ export function NotificationsPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["notifications"] });
       notify.success("Notification queued for retry");
+    },
+    onError: notify.error,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: () =>
+      api.notifications.create({
+        userId: sendUserId,
+        channel: sendChannel,
+        category: sendCategory,
+        priority: sendPriority,
+        subject: sendSubject,
+        body: sendBody,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      setSendOpen(false);
+      setSendUserId("");
+      setSendSubject("");
+      setSendBody("");
+      notify.success("Notification sent");
     },
     onError: notify.error,
   });
@@ -236,14 +273,23 @@ export function NotificationsPage() {
         title="Notifications"
         subtitle="View, filter, and manage notification delivery"
         actions={
-          <Button
-            variant="outlined"
-            startIcon={<DoneAllRoundedIcon />}
-            onClick={() => markAllReadMutation.mutate()}
-            disabled={markAllReadMutation.isPending}
-          >
-            Mark All Read
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => setSendOpen(true)}
+            >
+              Send Notification
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DoneAllRoundedIcon />}
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+            >
+              Mark All Read
+            </Button>
+          </Stack>
         }
       />
 
@@ -411,6 +457,88 @@ export function NotificationsPage() {
           </Stack>
         )}
       </Drawer>
+
+      <Dialog open={sendOpen} onClose={() => setSendOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Send Notification</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              fullWidth
+              label="User ID"
+              placeholder="Target user GUID"
+              value={sendUserId}
+              onChange={(e) => setSendUserId(e.target.value)}
+            />
+            <Stack direction="row" spacing={2}>
+              <FormControl fullWidth>
+                <InputLabel>Channel</InputLabel>
+                <Select
+                  value={sendChannel}
+                  label="Channel"
+                  onChange={(e) => setSendChannel(e.target.value as NotificationChannel)}
+                >
+                  {CHANNELS.map((c) => (
+                    <MenuItem key={c} value={c}>{c}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={sendCategory}
+                  label="Category"
+                  onChange={(e) => setSendCategory(e.target.value as NotificationCategory)}
+                >
+                  {CATEGORIES.map((c) => (
+                    <MenuItem key={c} value={c}>{c}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+            <FormControl fullWidth>
+              <InputLabel>Priority</InputLabel>
+              <Select
+                value={sendPriority}
+                label="Priority"
+                onChange={(e) => setSendPriority(e.target.value as NotificationPriority)}
+              >
+                {PRIORITIES.map((p) => (
+                  <MenuItem key={p} value={p}>{p}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Subject"
+              value={sendSubject}
+              onChange={(e) => setSendSubject(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Body"
+              multiline
+              minRows={3}
+              value={sendBody}
+              onChange={(e) => setSendBody(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSendOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={() => sendMutation.mutate()}
+            disabled={
+              sendMutation.isPending ||
+              !sendUserId.trim() ||
+              !sendSubject.trim() ||
+              !sendBody.trim()
+            }
+          >
+            {sendMutation.isPending ? "Sending..." : "Send"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

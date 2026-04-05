@@ -19,7 +19,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -33,7 +32,13 @@ import { StatusChip } from "../../components/common/StatusChip";
 import { api } from "../../lib/api";
 import { qk } from "../../lib/query-keys";
 
-const PIE_COLORS = ["#7C3AED", "#F97316", "#10B981", "#3B82F6", "#EF4444", "#8B5CF6"];
+const PIE_COLORS = ["#6366F1", "#818CF8", "#10B981", "#F59E0B", "#EF4444", "#A78BFA"];
+
+function seatColor(percent: number): "error" | "warning" | "primary" {
+  if (percent > 85) return "error";
+  if (percent > 60) return "warning";
+  return "primary";
+}
 
 export function DashboardPage() {
   const employeesQuery = useQuery({
@@ -153,18 +158,14 @@ export function DashboardPage() {
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie
-                      data={leaveByType}
+                      data={leaveByType.map((entry, i) => ({ ...entry, fill: PIE_COLORS[i % PIE_COLORS.length] }))}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
                       outerRadius={90}
                       label={({ name, value }) => `${name}: ${value}`}
-                    >
-                      {leaveByType.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
+                    />
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
@@ -195,7 +196,7 @@ export function DashboardPage() {
                     <XAxis dataKey="name" />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="#6366F1" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -225,7 +226,7 @@ export function DashboardPage() {
                   <LinearProgress
                     variant="determinate"
                     value={seatPercent}
-                    color={seatPercent > 85 ? "error" : seatPercent > 60 ? "warning" : "primary"}
+                    color={seatColor(seatPercent)}
                     sx={{ height: 8, borderRadius: 4 }}
                   />
                   {sub.currentPeriodEnd && (

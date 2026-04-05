@@ -10,6 +10,7 @@ export const qk = {
     all: ["roles"] as const,
     detail: (id: string) => ["roles", id] as const,
     permissions: (id: string) => ["roles", id, "permissions"] as const,
+    availablePermissions: ["roles", "available-permissions"] as const,
   },
   employees: {
     all: ["employees"] as const,
@@ -19,6 +20,7 @@ export const qk = {
   },
   leave: {
     all: ["leave"] as const,
+    detail: (id: string) => ["leave", id] as const,
     pending: ["leave", "pending"] as const,
     byEmployee: (id: string, year?: number) =>
       ["leave", "employee", id, { year }] as const,

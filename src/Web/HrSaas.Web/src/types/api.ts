@@ -412,19 +412,31 @@ export interface UpdateNotificationPreferencesPayload {
 
 export interface CreateNotificationTemplatePayload {
   name: string;
-  description: string;
+  slug: string;
   channel: NotificationChannel;
   category: NotificationCategory;
   subjectTemplate: string;
   bodyTemplate: string;
-  metadata?: string;
-  variables?: string;
+  description?: string;
+  samplePayload?: string;
 }
 
-export interface UpdateSubscriptionPayload {
-  amount: number;
-  billingCycle: BillingCycle;
-  promoCode?: string;
+export interface CreateBulkNotificationPayload {
+  userIds: string[];
+  channel: NotificationChannel;
+  category: NotificationCategory;
+  priority: NotificationPriority;
+  subject: string;
+  body: string;
+  recipientAddresses?: string[];
+  correlationId?: string;
+  metadata?: string;
+}
+
+export interface ActivateSubscriptionPayload {
+  price: number;
+  cycle: BillingCycle;
+  externalId?: string;
 }
 
 export interface CancelSubscriptionPayload {

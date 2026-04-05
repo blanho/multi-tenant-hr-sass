@@ -18,6 +18,7 @@ import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSetting
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
@@ -46,6 +47,7 @@ const adminNav = [
 const systemNav = [
   { label: "Notifications", path: "/notifications", icon: <NotificationsRoundedIcon /> },
   { label: "Preferences", path: "/notification-preferences", icon: <TuneRoundedIcon /> },
+  { label: "Templates", path: "/notification-templates", icon: <DescriptionRoundedIcon /> },
   { label: "Files", path: "/files", icon: <FolderRoundedIcon /> },
   { label: "Audit Logs", path: "/audit-logs", icon: <HistoryRoundedIcon /> },
 ];

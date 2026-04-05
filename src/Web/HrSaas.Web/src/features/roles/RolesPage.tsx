@@ -3,10 +3,12 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import {
+  Autocomplete,
   Box,
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -48,9 +50,10 @@ export function RolesPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [roleName, setRoleName] = useState("");
+  const [createPerms, setCreatePerms] = useState<string[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleDto | null>(null);
-  const [permissionsText, setPermissionsText] = useState("");
+  const [editPerms, setEditPerms] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<RoleDto | null>(null);
 
   const rolesQuery = useQuery({
@@ -58,12 +61,18 @@ export function RolesPage() {
     queryFn: api.roles.list,
   });
 
+  const availablePermsQuery = useQuery({
+    queryKey: qk.roles.availablePermissions,
+    queryFn: api.roles.getAvailablePermissions,
+  });
+
   const createMutation = useMutation({
-    mutationFn: () => api.roles.create({ name: roleName }),
+    mutationFn: () => api.roles.create({ name: roleName, permissions: createPerms }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles.all });
       setCreateOpen(false);
       setRoleName("");
+      setCreatePerms([]);
       notify.success("Role created");
     },
     onError: notify.error,
@@ -72,11 +81,7 @@ export function RolesPage() {
   const updatePermsMutation = useMutation({
     mutationFn: () => {
       if (!editRole) return Promise.reject(new Error("No role selected"));
-      const perms = permissionsText
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean);
-      return api.roles.updatePermissions(editRole.id, { permissions: perms });
+      return api.roles.updatePermissions(editRole.id, { permissions: editPerms });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles.all });
@@ -101,9 +106,11 @@ export function RolesPage() {
 
   const openEditPerms = (role: RoleDto) => {
     setEditRole(role);
-    setPermissionsText(role.permissions.join(", "));
+    setEditPerms([...role.permissions]);
     setEditOpen(true);
   };
+
+  const allPerms = availablePermsQuery.data ?? [];
 
   const columns = useMemo<GridColDef<RoleDto>[]>(
     () => [
@@ -215,17 +222,40 @@ export function RolesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create Role</DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Role Name"
-            value={roleName}
-            onChange={(e) => setRoleName(e.target.value)}
-            sx={{ mt: 1 }}
-          />
+          <Stack spacing={2} mt={1}>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Role Name"
+              value={roleName}
+              onChange={(e) => setRoleName(e.target.value)}
+            />
+            <Autocomplete
+              multiple
+              options={allPerms}
+              value={createPerms}
+              onChange={(_, v) => setCreatePerms(v)}
+              disableCloseOnSelect
+              renderOption={(props, option, { selected: checked }) => {
+                const { key, ...rest } = props;
+                return (
+                  <li key={key} {...rest}>
+                    <Checkbox size="small" checked={checked} sx={{ mr: 1 }} />
+                    {option}
+                  </li>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Permissions" placeholder="Select permissions" />
+              )}
+              limitTags={5}
+              slotProps={{ chip: { size: "small" } }}
+              loading={availablePermsQuery.isFetching}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -242,17 +272,33 @@ export function RolesPage() {
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Edit Permissions — {editRole?.name}</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            Enter permissions separated by commas
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            label="Permissions"
-            value={permissionsText}
-            onChange={(e) => setPermissionsText(e.target.value)}
-          />
+          <Stack spacing={2} mt={1}>
+            <Typography variant="body2" color="text.secondary">
+              Select permissions for this role from the available list
+            </Typography>
+            <Autocomplete
+              multiple
+              options={allPerms}
+              value={editPerms}
+              onChange={(_, v) => setEditPerms(v)}
+              disableCloseOnSelect
+              renderOption={(props, option, { selected: checked }) => {
+                const { key, ...rest } = props;
+                return (
+                  <li key={key} {...rest}>
+                    <Checkbox size="small" checked={checked} sx={{ mr: 1 }} />
+                    {option}
+                  </li>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Permissions" placeholder="Select permissions" />
+              )}
+              limitTags={5}
+              slotProps={{ chip: { size: "small" } }}
+              loading={availablePermsQuery.isFetching}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Cancel</Button>
