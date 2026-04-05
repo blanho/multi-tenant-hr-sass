@@ -101,16 +101,11 @@ graph TB
 Each module follows strict **Clean Architecture** with enforced dependency rules:
 
 ```mermaid
-block-beta
-    columns 1
-    block:api["API Layer — Controllers / Middleware / DI Registration"]
-    end
-    block:app["Application Layer — Commands / Queries / Handlers / DTOs / Validators"]
-    end
-    block:infra["Infrastructure Layer — EF Core / Repositories / External Services"]
-    end
-    block:domain["Domain Layer — Entities / Value Objects / Aggregates / Domain Events"]
-    end
+flowchart TD
+    api["API Layer<br/>Controllers / Middleware / DI Registration"]
+    app["Application Layer<br/>Commands / Queries / Handlers / DTOs / Validators"]
+    infra["Infrastructure Layer<br/>EF Core / Repositories / External Services"]
+    domain["Domain Layer<br/>Entities / Value Objects / Aggregates / Domain Events"]
 
     api --> app
     app --> domain
