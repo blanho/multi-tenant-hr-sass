@@ -69,10 +69,10 @@ function PreferencesForm({ initial }: Readonly<{ initial: NotificationPreference
   const queryClient = useQueryClient();
 
   const [enabledChannels, setEnabledChannels] = useState<NotificationChannel[]>(
-    initial.enabledChannels,
+    initial.enabledChannels ?? [],
   );
   const [mutedCategories, setMutedCategories] = useState<NotificationCategory[]>(
-    initial.mutedCategories,
+    initial.mutedCategories ?? [],
   );
   const [emailEnabled, setEmailEnabled] = useState(initial.emailEnabled);
   const [digestFrequency, setDigestFrequency] = useState<DigestFrequency>(

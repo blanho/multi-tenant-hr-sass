@@ -85,5 +85,6 @@ export function hasPermission(permission: string): boolean {
 
   const tokenPermissions = claims.permissions ?? [];
   const sessionPermissions = getSession()?.user.permissions ?? [];
-  return [...tokenPermissions, ...sessionPermissions].includes(permission);
+  const all = [...tokenPermissions, ...sessionPermissions];
+  return all.includes("*") || all.includes(permission);
 }

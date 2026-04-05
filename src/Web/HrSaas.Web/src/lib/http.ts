@@ -10,6 +10,23 @@ export const http = axios.create({
   timeout: 30000,
 });
 
+let _cachedAccessToken: string | null = null;
+let _cachedTenantId: string | null = null;
+
+export function setAuthHeaders(
+  accessToken: string | null,
+  tenantId: string | null,
+): void {
+  _cachedAccessToken = accessToken;
+  _cachedTenantId = tenantId;
+}
+
+function resetAuth(): void {
+  clearSession();
+  _cachedAccessToken = null;
+  _cachedTenantId = null;
+}
+
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -28,8 +45,8 @@ function processQueue(error: unknown, token: string | null) {
 }
 
 http.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  const tenantId = getTenantId();
+  const token = _cachedAccessToken ?? getAccessToken();
+  const tenantId = _cachedTenantId ?? getTenantId();
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -49,14 +66,14 @@ http.interceptors.response.use(
 
     if (error.response?.status !== 401 || originalRequest._retry) {
       if (error.response?.status === 401) {
-        clearSession();
+        resetAuth();
       }
       throw error;
     }
 
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
-      clearSession();
+      resetAuth();
       throw error;
     }
 
@@ -79,12 +96,13 @@ http.interceptors.response.use(
       );
 
       setSession(data);
+      setAuthHeaders(data.accessToken, data.user.tenantId);
       processQueue(null, data.accessToken);
       originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
       return http(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      clearSession();
+      resetAuth();
       throw refreshError;
     } finally {
       isRefreshing = false;

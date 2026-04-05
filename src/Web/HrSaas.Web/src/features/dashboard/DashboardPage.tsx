@@ -52,6 +52,7 @@ export function DashboardPage() {
     queryKey: qk.billing.subscription,
     queryFn: api.billing.getSubscription,
     retry: 0,
+    throwOnError: false,
   });
 
   const featuresQuery = useQuery({
@@ -202,7 +203,7 @@ export function DashboardPage() {
 
       <Grid container spacing={2}>
         {sub && (
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid key="seat-usage" size={{ xs: 12, md: 6 }}>
             <Card>
               <CardContent>
                 <Stack
@@ -241,7 +242,7 @@ export function DashboardPage() {
           </Grid>
         )}
 
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid key="feature-flags" size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" mb={2}>
@@ -270,7 +271,7 @@ export function DashboardPage() {
         </Grid>
 
         {pendingLeaves > 0 && (
-          <Grid size={{ xs: 12 }}>
+          <Grid key="pending-leave" size={{ xs: 12 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2}>
