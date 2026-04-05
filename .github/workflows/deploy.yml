@@ -12,6 +12,7 @@ permissions:
 
 env:
   DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '22'
   BUILD_CONFIGURATION: 'Release'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -38,6 +39,13 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: src/Web/HrSaas.Web/package-lock.json
+
       - name: Restore
         run: dotnet restore HrSaas.sln
 
@@ -59,6 +67,20 @@ jobs:
       - name: Format Check
         run: dotnet format HrSaas.sln --verify-no-changes --severity warn
 
+      - name: Install Frontend Dependencies
+        working-directory: src/Web/HrSaas.Web
+        run: npm ci
+
+      - name: Lint Frontend
+        working-directory: src/Web/HrSaas.Web
+        run: npx eslint src/
+
+      - name: Build Frontend
+        working-directory: src/Web/HrSaas.Web
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || '' }}
+
       - name: Publish API
         run: dotnet publish src/Api/HrSaas.Api/HrSaas.Api.csproj -c ${{ env.BUILD_CONFIGURATION }} -o publish/api
 
@@ -67,6 +89,13 @@ jobs:
         with:
           name: hrsaas-api
           path: publish/api
+          retention-days: 5
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrsaas-web
+          path: src/Web/HrSaas.Web/dist
           retention-days: 5
 
       - name: Upload Infra Artifact
@@ -88,6 +117,12 @@ jobs:
         with:
           name: hrsaas-api
           path: api
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hrsaas-web
+          path: web
 
       - name: Download Infra Artifact
         uses: actions/download-artifact@v4
@@ -113,11 +148,20 @@ jobs:
             postgresPassword=${{ secrets.POSTGRES_PASSWORD }}
             jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
 
-      - name: Deploy to App Service
+      - name: Deploy API to App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ steps.bicep.outputs.appServiceName }}
           package: api
+
+      - name: Deploy Frontend to Static Web App
+        uses: azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_TOKEN_DEV }}
+          action: upload
+          app_location: web
+          skip_app_build: true
+          skip_api_build: true
 
       - name: Health Check
         run: |
@@ -151,6 +195,12 @@ jobs:
         with:
           name: hrsaas-api
           path: api
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hrsaas-web
+          path: web
 
       - name: Download Infra Artifact
         uses: actions/download-artifact@v4
@@ -223,6 +273,15 @@ jobs:
             echo "Post-swap check returned $STATUS — monitor closely"
           fi
 
+      - name: Deploy Frontend to Static Web App
+        uses: azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_TOKEN_STAGING }}
+          action: upload
+          app_location: web
+          skip_app_build: true
+          skip_api_build: true
+
   deploy-production:
     name: Deploy to Production (Blue-Green)
     needs: deploy-staging
@@ -234,6 +293,12 @@ jobs:
         with:
           name: hrsaas-api
           path: api
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hrsaas-web
+          path: web
 
       - name: Download Infra Artifact
         uses: actions/download-artifact@v4
@@ -328,3 +393,13 @@ jobs:
               -s staging \
               --target-slot production
             echo "Rollback completed — previous version restored"
+
+      - name: Deploy Frontend to Static Web App
+        if: success()
+        uses: azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_TOKEN_PROD }}
+          action: upload
+          app_location: web
+          skip_app_build: true
+          skip_api_build: true
