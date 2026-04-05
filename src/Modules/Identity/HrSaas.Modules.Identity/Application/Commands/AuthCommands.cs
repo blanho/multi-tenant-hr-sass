@@ -5,6 +5,7 @@ using HrSaas.Modules.Identity.Domain.Entities;
 using HrSaas.Modules.Identity.Domain.ValueObjects;
 using HrSaas.SharedKernel.Audit;
 using HrSaas.SharedKernel.CQRS;
+using HrSaas.TenantSdk;
 using MediatR;
 
 namespace HrSaas.Modules.Identity.Application.Commands;
@@ -31,10 +32,12 @@ public sealed class RegisterCommandHandler(
     IUserRepository userRepository,
     IRoleRepository roleRepository,
     IPasswordHasher passwordHasher,
-    IJwtTokenService jwtTokenService) : IRequestHandler<RegisterCommand, Result<AuthTokenDto>>
+    IJwtTokenService jwtTokenService,
+    ITenantService tenantService) : IRequestHandler<RegisterCommand, Result<AuthTokenDto>>
 {
     public async Task<Result<AuthTokenDto>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
+        tenantService.SetCurrentTenant(request.TenantId);
         var existing = await userRepository.GetByEmailAsync(request.TenantId, request.Email, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
             return Result<AuthTokenDto>.Failure("A user with this email already exists.", "EMAIL_TAKEN");
@@ -77,10 +80,12 @@ public sealed class LoginCommandHandler(
     IUserRepository userRepository,
     IRoleRepository roleRepository,
     IPasswordHasher passwordHasher,
-    IJwtTokenService jwtTokenService) : IRequestHandler<LoginCommand, Result<AuthTokenDto>>
+    IJwtTokenService jwtTokenService,
+    ITenantService tenantService) : IRequestHandler<LoginCommand, Result<AuthTokenDto>>
 {
     public async Task<Result<AuthTokenDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
+        tenantService.SetCurrentTenant(request.TenantId);
         var user = await userRepository.GetByEmailAsync(request.TenantId, request.Email, cancellationToken).ConfigureAwait(false);
         if (user is null || !passwordHasher.Verify(request.Password, user.Password.Value))
             return Result<AuthTokenDto>.Failure("Invalid credentials.", "INVALID_CREDENTIALS");

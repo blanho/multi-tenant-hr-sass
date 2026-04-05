@@ -97,10 +97,11 @@ services:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      Database__AutoMigrate: "true"
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=hrsaas;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}
       ConnectionStrings__RabbitMQ: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672/
       ConnectionStrings__Redis: redis:6379
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:-dev-secret-key-minimum-32-characters-long!!}
       Jwt__Issuer: HrSaas
       Jwt__Audience: hrsaas-api
       Telemetry__OtlpEndpoint: http://otel-collector:4317
@@ -124,7 +125,7 @@ services:
       azurite:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/live || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/live || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3

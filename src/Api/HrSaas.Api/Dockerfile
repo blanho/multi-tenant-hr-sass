@@ -41,8 +41,8 @@ RUN dotnet publish "HrSaas.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /
 
 FROM base AS final
 WORKDIR /app
-# Run as non-root user for security
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/* \
+    && adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 COPY --from=publish /app/publish .
 

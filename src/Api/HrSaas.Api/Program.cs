@@ -59,6 +59,9 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddPermissionAuthorization();
 
+    builder.Services.Configure<HrSaas.Modules.Identity.Infrastructure.Services.JwtOptions>(
+        builder.Configuration.GetSection("Jwt"));
+
     builder.Services.AddTenantSdk();
 
     builder.Services.AddScoped<AuditableEntityInterceptor>();
@@ -177,6 +180,9 @@ try
                 .Database.MigrateAsync();
             await scope.ServiceProvider
                 .GetRequiredService<HrSaas.Modules.Storage.Infrastructure.Persistence.StorageDbContext>()
+                .Database.MigrateAsync();
+            await scope.ServiceProvider
+                .GetRequiredService<HrSaas.EventBus.Outbox.OutboxDbContext>()
                 .Database.MigrateAsync();
             logger.LogInformation("All database migrations applied successfully");
         }
