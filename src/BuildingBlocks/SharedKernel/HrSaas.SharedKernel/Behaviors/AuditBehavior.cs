@@ -163,29 +163,29 @@ public sealed class AuditBehavior<TRequest, TResponse>(
         return null;
     }
 
+    private static readonly string[] _commandQuerySuffixes = ["Command", "Query"];
+
+    private static readonly string[] _actionPrefixes =
+    [
+        "Create", "Update", "Delete", "Get", "Activate", "Suspend",
+        "Reinstate", "Upgrade", "Cancel", "Approve", "Reject", "Apply", "Assign",
+        "Send", "Retry", "Mark", "Register", "Login", "Upload", "Download", "Generate"
+    ];
+
     private static string ResolveEntityType(TRequest request)
     {
         var name = typeof(TRequest).Name;
 
-        var suffixes = new[] { "Command", "Query" };
-        foreach (var suffix in suffixes)
+        var matchedSuffix = Array.Find(_commandQuerySuffixes, s => name.EndsWith(s, StringComparison.Ordinal));
+        if (matchedSuffix is not null)
         {
-            if (name.EndsWith(suffix, StringComparison.Ordinal))
-            {
-                name = name[..^suffix.Length];
-            }
+            name = name[..^matchedSuffix.Length];
         }
 
-        var prefixes = new[] { "Create", "Update", "Delete", "Get", "Activate", "Suspend",
-            "Reinstate", "Upgrade", "Cancel", "Approve", "Reject", "Apply", "Assign",
-            "Send", "Retry", "Mark", "Register", "Login", "Upload", "Download", "Generate" };
-
-        foreach (var prefix in prefixes)
+        var matchedPrefix = Array.Find(_actionPrefixes, p => name.StartsWith(p, StringComparison.Ordinal));
+        if (matchedPrefix is not null)
         {
-            if (name.StartsWith(prefix, StringComparison.Ordinal))
-            {
-                return name[prefix.Length..];
-            }
+            return name[matchedPrefix.Length..];
         }
 
         return name;

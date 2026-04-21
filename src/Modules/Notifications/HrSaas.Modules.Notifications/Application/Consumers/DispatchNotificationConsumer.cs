@@ -74,7 +74,6 @@ public sealed class DispatchNotificationConsumer(
 }
 
 public sealed class SendEmailNotificationConsumer(
-    INotificationRepository repository,
     IChannelProviderFactory channelProviderFactory,
     ILogger<SendEmailNotificationConsumer> logger) : IConsumer<SendEmailNotificationCommand>
 {

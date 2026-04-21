@@ -41,7 +41,8 @@ public sealed class SendNotificationCommandValidator : AbstractValidator<SendNot
             .EmailAddress()
             .When(x => x.Channel == NotificationChannel.Email && !string.IsNullOrEmpty(x.RecipientAddress));
         RuleFor(x => x.ExpiresAt)
-            .GreaterThan(DateTime.UtcNow)
+            .Must(exp => exp!.Value > DateTime.UtcNow)
+            .WithMessage("ExpiresAt must be in the future.")
             .When(x => x.ExpiresAt.HasValue);
     }
 }
@@ -49,21 +50,24 @@ public sealed class SendNotificationCommandValidator : AbstractValidator<SendNot
 public sealed class SendNotificationCommandHandler(
     INotificationRepository notificationRepository,
     INotificationTemplateRepository templateRepository,
-    IUserNotificationPreferenceRepository preferenceRepository,
-    IChannelProviderFactory channelProviderFactory) : IRequestHandler<SendNotificationCommand, Result<Guid>>
+    IUserNotificationPreferenceRepository preferenceRepository) : IRequestHandler<SendNotificationCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(
         SendNotificationCommand command,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var preference = await preferenceRepository.GetAsync(
-            command.UserId, command.Channel, command.Category, ct).ConfigureAwait(false);
+            command.UserId, command.Channel, command.Category, cancellationToken).ConfigureAwait(false);
 
         if (preference is { IsEnabled: false })
+        {
             return Result<Guid>.Failure("User has disabled notifications for this channel and category.", "NOTIFICATIONS_DISABLED");
+        }
 
         if (preference is not null && preference.IsInQuietHours(DateTime.UtcNow) && command.Priority != NotificationPriority.Critical)
+        {
             return Result<Guid>.Failure("User is in quiet hours. Only critical notifications are delivered.", "QUIET_HOURS");
+        }
 
         var subject = command.Subject;
         var body = command.Body;
@@ -72,7 +76,7 @@ public sealed class SendNotificationCommandHandler(
         if (!string.IsNullOrWhiteSpace(command.TemplateSlug) && command.TemplateVariables is not null)
         {
             var template = await templateRepository.GetBySlugAsync(
-                command.TemplateSlug, command.Channel, ct).ConfigureAwait(false);
+                command.TemplateSlug, command.Channel, cancellationToken).ConfigureAwait(false);
 
             if (template is not null && template.IsActive)
             {
@@ -97,8 +101,8 @@ public sealed class SendNotificationCommandHandler(
             command.ScheduledAt,
             command.ExpiresAt);
 
-        await notificationRepository.AddAsync(notification, ct).ConfigureAwait(false);
-        await notificationRepository.SaveChangesAsync(ct).ConfigureAwait(false);
+        await notificationRepository.AddAsync(notification, cancellationToken).ConfigureAwait(false);
+        await notificationRepository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<Guid>.Success(notification.Id);
     }

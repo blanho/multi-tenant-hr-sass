@@ -30,6 +30,16 @@ public sealed record Result<T>
             ? Result<TNew>.Success(mapper(Value!))
             : Result<TNew>.Failure(Error!, ErrorCode);
 
+    public Result<TNew> Bind<TNew>(Func<T, Result<TNew>> binder) =>
+        IsSuccess
+            ? binder(Value!)
+            : Result<TNew>.Failure(Error!, ErrorCode);
+
+    public async Task<Result<TNew>> BindAsync<TNew>(Func<T, Task<Result<TNew>>> binder) =>
+        IsSuccess
+            ? await binder(Value!).ConfigureAwait(false)
+            : Result<TNew>.Failure(Error!, ErrorCode);
+
     public override string ToString() =>
         IsSuccess ? $"Success({Value})" : $"Failure({ErrorCode}: {Error})";
 }

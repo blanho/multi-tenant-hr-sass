@@ -6,7 +6,6 @@ using MediatR;
 
 namespace HrSaas.Modules.Employee.Application.Commands;
 
-
 [Auditable(AuditAction.Update, AuditCategory.Employee, Severity = AuditSeverity.Medium)]
 public sealed record UpdateEmployeeCommand(
     Guid TenantId,
@@ -30,9 +29,9 @@ public sealed class UpdateEmployeeCommandValidator : AbstractValidator<UpdateEmp
 public sealed class UpdateEmployeeCommandHandler(IEmployeeRepository repository)
     : IRequestHandler<UpdateEmployeeCommand, Result>
 {
-    public async Task<Result> Handle(UpdateEmployeeCommand command, CancellationToken ct)
+    public async Task<Result> Handle(UpdateEmployeeCommand command, CancellationToken cancellationToken)
     {
-        var employee = await repository.GetByIdAsync(command.EmployeeId, ct).ConfigureAwait(false);
+        var employee = await repository.GetByIdAsync(command.EmployeeId, cancellationToken).ConfigureAwait(false);
 
         if (employee is null)
         {
@@ -41,39 +40,7 @@ public sealed class UpdateEmployeeCommandHandler(IEmployeeRepository repository)
 
         employee.Update(command.Name, command.Department, command.Position);
         repository.Update(employee);
-        await repository.SaveChangesAsync(ct).ConfigureAwait(false);
-
-        return Result.Success();
-    }
-}
-
-[Auditable(AuditAction.Delete, AuditCategory.Employee, Severity = AuditSeverity.High)]
-public sealed record DeleteEmployeeCommand(Guid TenantId, Guid EmployeeId) : ICommand;
-
-public sealed class DeleteEmployeeCommandValidator : AbstractValidator<DeleteEmployeeCommand>
-{
-    public DeleteEmployeeCommandValidator()
-    {
-        RuleFor(x => x.TenantId).NotEmpty();
-        RuleFor(x => x.EmployeeId).NotEmpty();
-    }
-}
-
-public sealed class DeleteEmployeeCommandHandler(IEmployeeRepository repository)
-    : IRequestHandler<DeleteEmployeeCommand, Result>
-{
-    public async Task<Result> Handle(DeleteEmployeeCommand command, CancellationToken ct)
-    {
-        var employee = await repository.GetByIdAsync(command.EmployeeId, ct).ConfigureAwait(false);
-
-        if (employee is null)
-        {
-            return Result.Failure("Employee not found.", "EMPLOYEE_NOT_FOUND");
-        }
-
-        employee.Delete();
-        repository.Update(employee);
-        await repository.SaveChangesAsync(ct).ConfigureAwait(false);
+        await repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success();
     }

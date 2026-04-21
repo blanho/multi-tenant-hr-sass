@@ -1,6 +1,7 @@
 using HrSaas.Modules.Employee.Application.DTOs;
 using HrSaas.Modules.Employee.Application.Interfaces;
 using HrSaas.SharedKernel.CQRS;
+using HrSaas.SharedKernel.Pagination;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public sealed class GetEmployeeByIdQueryHandler(IEmployeeDbContext dbContext)
 {
     public async Task<Result<EmployeeDto>> Handle(
         GetEmployeeByIdQuery query,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var employee = await dbContext.Employees
             .AsNoTracking()
@@ -28,7 +29,7 @@ public sealed class GetEmployeeByIdQueryHandler(IEmployeeDbContext dbContext)
                 e.Email,
                 e.CreatedAt,
                 e.UpdatedAt))
-            .FirstOrDefaultAsync(ct)
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return employee is null
@@ -48,14 +49,16 @@ public sealed class GetAllEmployeesQueryHandler(IEmployeeDbContext dbContext)
 {
     public async Task<Result<PagedResult<EmployeeSummaryDto>>> Handle(
         GetAllEmployeesQuery query,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var baseQuery = dbContext.Employees.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Department))
+        {
             baseQuery = baseQuery.Where(e => e.Department.Name == query.Department);
+        }
 
-        var totalCount = await baseQuery.CountAsync(ct).ConfigureAwait(false);
+        var totalCount = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
 
         var items = await baseQuery
             .OrderBy(e => e.Name)
@@ -66,7 +69,7 @@ public sealed class GetAllEmployeesQueryHandler(IEmployeeDbContext dbContext)
                 e.Name,
                 e.Department.Name,
                 e.Position.Title))
-            .ToListAsync(ct)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         var result = new PagedResult<EmployeeSummaryDto>(
@@ -79,14 +82,3 @@ public sealed class GetAllEmployeesQueryHandler(IEmployeeDbContext dbContext)
     }
 }
 
-
-public record PagedResult<T>(
-    IReadOnlyList<T> Items,
-    int Page,
-    int PageSize,
-    int TotalCount)
-{
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-    public bool HasNext => Page < TotalPages;
-    public bool HasPrevious => Page > 1;
-}

@@ -69,6 +69,9 @@ public sealed class LeaveApprovedNotificationConsumer(
     public async Task Consume(ConsumeContext<LeaveApprovedIntegrationEvent> context)
     {
         var msg = context.Message;
+        logger.LogInformation(
+            "Creating leave approved notification for employee {EmployeeId} in tenant {TenantId}",
+            msg.EmployeeId, msg.TenantId);
 
         var notification = Notification.Create(
             msg.TenantId,
@@ -92,6 +95,9 @@ public sealed class LeaveRejectedNotificationConsumer(
     public async Task Consume(ConsumeContext<LeaveRejectedIntegrationEvent> context)
     {
         var msg = context.Message;
+        logger.LogInformation(
+            "Creating leave rejected notification for employee {EmployeeId} in tenant {TenantId}",
+            msg.EmployeeId, msg.TenantId);
 
         var notification = Notification.Create(
             msg.TenantId,
@@ -115,6 +121,9 @@ public sealed class SubscriptionPastDueNotificationConsumer(
     public async Task Consume(ConsumeContext<SubscriptionPastDueIntegrationEvent> context)
     {
         var msg = context.Message;
+        logger.LogInformation(
+            "Creating subscription past-due notification for tenant {TenantId}",
+            msg.TenantId);
 
         var notification = Notification.Create(
             msg.TenantId,
@@ -138,6 +147,9 @@ public sealed class UserRegisteredNotificationConsumer(
     public async Task Consume(ConsumeContext<UserRegisteredIntegrationEvent> context)
     {
         var msg = context.Message;
+        logger.LogInformation(
+            "Creating account-created notification for user {UserId} in tenant {TenantId}",
+            msg.UserId, msg.TenantId);
 
         var notification = Notification.Create(
             msg.TenantId,
